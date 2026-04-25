@@ -1,0 +1,5 @@
+---
+vnc_user: "{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'root' }}"
+vnc_display: 1
+vnc_geometry: "1280x720"
+vnc_depth: 24

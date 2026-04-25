@@ -1,0 +1,27 @@
+#!/bin/bash
+# desktop-url: print a time-limited HTTPS access URL for the noVNC desktop.
+#
+# Usage:
+#   desktop-url
+#
+# Run this command over SSH to get a URL you can paste into a browser.
+# No VNC password is needed; the URL itself is the credential.
+
+set -euo pipefail
+
+RESULT=$(curl -sf -X POST http://127.0.0.1:8898/generate 2>/dev/null) || {
+  echo "ERROR: Could not reach the novnc-auth service." >&2
+  echo "       Is novnc-auth.service running?" >&2
+  exit 1
+}
+
+URL=$(printf '%s' "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['url'])")
+EXPIRES=$(printf '%s' "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['expires_at'])")
+
+echo ""
+echo "  Desktop URL : $URL"
+echo "  Expires     : $EXPIRES"
+echo ""
+echo "  Open the URL in your browser. It is valid for one session."
+echo "  Run 'desktop-url' again to generate a new link."
+echo ""

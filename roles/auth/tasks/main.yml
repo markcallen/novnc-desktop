@@ -1,0 +1,79 @@
+---
+- name: Create novnc-auth service user
+  ansible.builtin.user:
+    name: novnc-auth
+    system: true
+    shell: /usr/sbin/nologin
+    home: /var/lib/novnc-auth
+    create_home: true
+    comment: "noVNC token auth service"
+
+- name: Create /etc/novnc-auth directory
+  ansible.builtin.file:
+    path: /etc/novnc-auth
+    state: directory
+    owner: novnc-auth
+    group: novnc-auth
+    mode: "0750"
+
+- name: Generate HMAC secret (if not already present)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    python3 -c "import secrets; print(secrets.token_hex(32))" > /etc/novnc-auth/secret
+    chmod 600 /etc/novnc-auth/secret
+    chown novnc-auth:novnc-auth /etc/novnc-auth/secret
+  args:
+    creates: /etc/novnc-auth/secret
+    executable: /bin/bash
+
+- name: Write auth service config
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: /etc/novnc-auth/config.json
+    owner: novnc-auth
+    group: novnc-auth
+    mode: "0640"
+  notify: Restart novnc-auth
+
+- name: Create auth service library directory
+  ansible.builtin.file:
+    path: /usr/local/lib/novnc-auth
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install novnc-auth Python service
+  ansible.builtin.copy:
+    src: novnc-auth.py
+    dest: /usr/local/lib/novnc-auth/novnc-auth.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart novnc-auth
+
+- name: Install systemd unit for novnc-auth
+  ansible.builtin.template:
+    src: novnc-auth.service.j2
+    dest: /etc/systemd/system/novnc-auth.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart novnc-auth
+
+- name: Install desktop-url command
+  ansible.builtin.copy:
+    src: desktop-url
+    dest: /usr/local/bin/desktop-url
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start novnc-auth
+  ansible.builtin.systemd:
+    name: novnc-auth.service
+    enabled: true
+    state: started

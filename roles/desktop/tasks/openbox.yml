@@ -1,0 +1,52 @@
+---
+# Openbox + tint2 lightweight window manager
+
+- name: Install Openbox packages
+  ansible.builtin.apt:
+    name:
+      - openbox
+      - tint2
+      - adwaita-icon-theme
+      - hicolor-icon-theme
+      - gnome-icon-theme
+      - librsvg2-common
+      - gtk-update-icon-cache
+    state: present
+
+- name: Update icon cache (hicolor)
+  ansible.builtin.command: gtk-update-icon-cache -f /usr/share/icons/hicolor
+  changed_when: false
+  failed_when: false
+
+- name: Update icon cache (Adwaita)
+  ansible.builtin.command: gtk-update-icon-cache -f /usr/share/icons/Adwaita
+  changed_when: false
+  failed_when: false
+
+- name: Set VNC home directory
+  ansible.builtin.set_fact:
+    desktop_vnc_home: "{{ '/root' if vnc_user == 'root' else '/home/' + vnc_user }}"
+
+- name: Create Openbox config directory
+  ansible.builtin.file:
+    path: "{{ desktop_vnc_home }}/.config/openbox"
+    state: directory
+    owner: "{{ vnc_user }}"
+    group: "{{ vnc_user }}"
+    mode: "0755"
+
+- name: Deploy Openbox configuration
+  ansible.builtin.template:
+    src: rc.xml.j2
+    dest: "{{ desktop_vnc_home }}/.config/openbox/rc.xml"
+    owner: "{{ vnc_user }}"
+    group: "{{ vnc_user }}"
+    mode: "0644"
+
+- name: Deploy Openbox xstartup
+  ansible.builtin.template:
+    src: xstartup-openbox.j2
+    dest: "{{ desktop_vnc_home }}/.vnc/xstartup"
+    owner: "{{ vnc_user }}"
+    group: "{{ vnc_user }}"
+    mode: "0755"

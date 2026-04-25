@@ -1,0 +1,52 @@
+---
+# Elementary OS Pantheon desktop (best-effort on Ubuntu 24.04)
+# Requires the elementary-os/stable PPA. May lag behind Ubuntu LTS releases.
+
+- name: Install software-properties-common for PPA support
+  ansible.builtin.apt:
+    name: software-properties-common
+    state: present
+
+- name: Add Elementary OS PPA
+  ansible.builtin.apt_repository:
+    repo: "ppa:elementary-os/stable"
+    state: present
+    update_cache: true
+
+- name: Install Pantheon desktop packages
+  ansible.builtin.apt:
+    name:
+      - elementary-desktop
+    state: present
+  register: elementary_install
+  failed_when: false
+
+- name: Warn if Pantheon install failed (best-effort)
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: elementary-desktop could not be installed from the PPA
+      (rc={{ elementary_install.rc }}). The PPA may not yet support this Ubuntu
+      release. Falling back may require manual intervention.
+  when: elementary_install.rc != 0
+
+- name: Mask display manager to prevent it conflicting with VNC
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    masked: true
+    daemon_reload: false
+  loop:
+    - lightdm
+    - gdm3
+  failed_when: false
+
+- name: Set VNC home directory
+  ansible.builtin.set_fact:
+    desktop_vnc_home: "{{ '/root' if vnc_user == 'root' else '/home/' + vnc_user }}"
+
+- name: Deploy Pantheon xstartup
+  ansible.builtin.template:
+    src: xstartup-elementary.j2
+    dest: "{{ desktop_vnc_home }}/.vnc/xstartup"
+    owner: "{{ vnc_user }}"
+    group: "{{ vnc_user }}"
+    mode: "0755"

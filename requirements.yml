@@ -1,0 +1,11 @@
+---
+# Ansible Galaxy requirements
+# Install with: ansible-galaxy install -r requirements.yml
+
+collections:
+  - name: ansible.utils
+    version: ">=2.0.0"
+  - name: community.general
+
+roles:
+  - name: staticdev.firefox

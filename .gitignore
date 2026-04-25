@@ -1,0 +1,27 @@
+# Ansible
+*.retry
+hosts.ini
+.ansible/
+
+# macOS
+.DS_Store
+
+# local playbook
+playbook.yml
+
+# smoke test keys
+.smoke-keys/
+
+# smoke test state
+.smoke-state/
+
+# smoke test artifacts
+.smoke-artifacts/
+
+# node dependencies
+node_modules/
+
+# terraform local runtime state
+smoke/ec2/.terraform/
+smoke/ec2/terraform.tfstate.d/
+.ballast/

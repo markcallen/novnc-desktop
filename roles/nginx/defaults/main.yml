@@ -1,0 +1,15 @@
+---
+# When true, the role will attempt to obtain a Let's Encrypt certificate if
+# tls_domain resolves to a public IP and letsencrypt_email is set. Falls back
+# to the self-signed cert automatically if conditions are not met.
+use_certbot: false
+
+# Domain for the TLS certificate. Defaults to the inventory hostname.
+tls_domain: "{{ inventory_hostname }}"
+
+# Email for Let's Encrypt registration. If not set, the role falls back to
+# git config user.email. If that is also unset, self-signed cert is used.
+letsencrypt_email: ""
+
+# Must match auth role's auth_service_port.
+auth_service_port: 8898

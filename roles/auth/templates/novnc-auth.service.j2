@@ -1,0 +1,21 @@
+[Unit]
+Description=noVNC token authentication service
+After=network.target
+
+[Service]
+Type=simple
+User=novnc-auth
+Group=novnc-auth
+ExecStart=/usr/bin/python3 /usr/local/lib/novnc-auth/novnc-auth.py
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/novnc-auth
+ReadOnlyPaths=/etc/novnc-auth
+
+[Install]
+WantedBy=multi-user.target

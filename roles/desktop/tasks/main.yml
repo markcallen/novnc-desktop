@@ -1,0 +1,78 @@
+---
+# Install browser and desktop environment selected by desktop_type.
+
+- name: Fail on unsupported desktop_type
+  ansible.builtin.fail:
+    msg: "desktop_type '{{ desktop_type }}' is not supported. Choose: openbox, elementary, deepin"
+  when: desktop_type not in ['openbox', 'elementary', 'deepin']
+
+- name: Fail when Chrome is requested on a non-x86_64 host
+  ansible.builtin.fail:
+    msg: >-
+      default_browser is set to chrome, but Google Chrome is only available for
+      x86_64 hosts. Use default_browser=firefox or override the browser for this
+      architecture.
+  when:
+    - default_browser == "chrome"
+    - ansible_architecture != "x86_64"
+
+- name: Install base desktop packages
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    name:
+      - dbus-x11
+      - xterm
+      - fonts-liberation
+      - ca-certificates
+      - gpg
+    state: present
+
+- name: Install Google Chrome signing key
+  ansible.builtin.get_url:
+    url: https://dl.google.com/linux/linux_signing_key.pub
+    dest: /usr/share/keyrings/googlechrome.pub
+    mode: "0644"
+  when:
+    - default_browser == "chrome"
+    - ansible_architecture == "x86_64"
+
+- name: Configure Google Chrome apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome.pub] https://dl.google.com/linux/chrome/deb/ stable main"
+    filename: google-chrome
+    state: present
+    update_cache: true
+  when:
+    - default_browser == "chrome"
+    - ansible_architecture == "x86_64"
+
+- name: Install Google Chrome
+  ansible.builtin.apt:
+    name: google-chrome-stable
+    state: present
+  when:
+    - default_browser == "chrome"
+    - ansible_architecture == "x86_64"
+
+- name: Set default browser to Chrome
+  community.general.alternatives:
+    name: x-www-browser
+    path: /usr/bin/google-chrome-stable
+  when: default_browser == "chrome"
+
+- name: Set default browser to Firefox
+  community.general.alternatives:
+    name: x-www-browser
+    path: /usr/bin/firefox
+  when: default_browser == "firefox"
+
+- name: Warn when VNC session is configured to run as root
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: vnc_user is set to root. Running the desktop session as root is
+      discouraged. Prefer an existing non-root account such as ubuntu.
+  when: vnc_user == "root"
+
+- name: Include desktop-specific tasks
+  ansible.builtin.include_tasks: "{{ desktop_type }}.yml"

@@ -1,0 +1,10 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart novnc-auth
+  ansible.builtin.systemd:
+    name: novnc-auth.service
+    state: restarted
+  listen: Restart novnc-auth

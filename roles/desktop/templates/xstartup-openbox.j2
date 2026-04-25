@@ -1,0 +1,15 @@
+#!/bin/sh
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+export XDG_CURRENT_DESKTOP=openbox
+export XDG_SESSION_DESKTOP=openbox
+
+dbus-launch --exit-with-session sh -lc "
+  openbox-session &
+  tint2 &
+  xterm &
+{% if smoke_test_marker_enabled | bool %}
+  xterm -title SMOKE_READY -geometry 44x8+20+20 -bg '#00ff66' -fg black -e sh -lc \"printf 'SMOKE READY\n'; exec sh\" &
+{% endif %}
+  wait
+"

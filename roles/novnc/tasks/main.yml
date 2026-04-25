@@ -1,0 +1,25 @@
+---
+- name: Install noVNC and websockify
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    name:
+      - novnc
+      - websockify
+    state: present
+
+- name: Create systemd unit for noVNC websocket proxy
+  ansible.builtin.template:
+    src: novnc.service.j2
+    dest: /etc/systemd/system/novnc.service
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start noVNC
+  ansible.builtin.systemd:
+    name: novnc.service
+    enabled: true
+    state: restarted

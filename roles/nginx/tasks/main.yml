@@ -1,0 +1,143 @@
+---
+- name: Install nginx, openssl, certbot, and UFW
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    name:
+      - nginx
+      - openssl
+      - ufw
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Set TLS domain fact
+  ansible.builtin.set_fact:
+    novnc_tls_domain: "{{ tls_domain | default(inventory_hostname) }}"
+
+- name: Set Let's Encrypt email fact
+  ansible.builtin.set_fact:
+    novnc_letsencrypt_email: >-
+      {{
+        letsencrypt_email
+        | default(
+            lookup(
+              'ansible.builtin.pipe',
+              'git config --global --get user.email 2>/dev/null',
+              errors='ignore'
+            ),
+            true
+          )
+        | trim
+      }}
+  when: use_certbot | bool
+
+- name: Check if tls_domain resolves to a public IP
+  when: use_certbot | bool
+  block:
+    - name: Resolve tls_domain to IP address
+      ansible.builtin.command: getent hosts {{ novnc_tls_domain }}
+      register: novnc_dns_lookup
+      changed_when: false
+      failed_when: false
+
+    - name: Set DNS resolved IP fact
+      ansible.builtin.set_fact:
+        novnc_resolved_ip: "{{ novnc_dns_lookup.stdout.split()[0] | default('') }}"
+      when: novnc_dns_lookup.rc == 0
+
+    - name: Evaluate certbot viability
+      ansible.builtin.set_fact:
+        novnc_certbot_viable: >-
+          {{
+            novnc_dns_lookup.rc == 0 and
+            novnc_resolved_ip | default('') != '' and
+            not (novnc_resolved_ip | ansible.utils.ipaddr('private')) and
+            not (novnc_resolved_ip | ansible.utils.ipaddr('loopback')) and
+            novnc_letsencrypt_email | default('') | length > 0
+          }}
+
+    - name: Report certbot viability
+      ansible.builtin.debug:
+        msg: >-
+          DNS lookup for {{ novnc_tls_domain }}:
+          {% if novnc_dns_lookup.rc == 0 %}resolved to {{ novnc_resolved_ip }}{% else %}failed{% endif %},
+          email: {{ novnc_letsencrypt_email | default('not set') }},
+          certbot viable: {{ novnc_certbot_viable }}
+
+- name: Set novnc_certbot_viable to false when certbot is disabled
+  ansible.builtin.set_fact:
+    novnc_certbot_viable: false
+  when: not (use_certbot | bool)
+
+- name: Create nginx SSL directory
+  ansible.builtin.file:
+    path: /etc/nginx/ssl
+    state: directory
+    mode: "0755"
+
+- name: Generate self-signed TLS certificate
+  ansible.builtin.command: >
+    openssl req -x509 -nodes -newkey rsa:2048
+    -keyout /etc/nginx/ssl/novnc.key
+    -out /etc/nginx/ssl/novnc.crt
+    -days 730
+    -subj "/CN={{ novnc_tls_domain }}"
+  args:
+    creates: /etc/nginx/ssl/novnc.crt
+
+- name: Write nginx site for noVNC
+  ansible.builtin.template:
+    src: novnc.conf.j2
+    dest: /etc/nginx/sites-available/novnc
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Enable nginx novnc site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/novnc
+    dest: /etc/nginx/sites-enabled/novnc
+    state: link
+    force: true
+  notify: Reload nginx
+
+- name: Disable default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Allow SSH and HTTPS through UFW
+  community.general.ufw:
+    rule: allow
+    name: "{{ item }}"
+  loop:
+    - OpenSSH
+    - "Nginx Full"
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+
+- name: Flush handlers to start nginx before certbot
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure nginx is started
+  ansible.builtin.systemd:
+    name: nginx
+    enabled: true
+    state: started
+
+- name: Obtain Let's Encrypt certificate via certbot
+  when: novnc_certbot_viable | default(false) | bool
+  block:
+    - name: Run certbot (nginx plugin)
+      ansible.builtin.command: >
+        certbot --nginx -n
+        -d {{ novnc_tls_domain }}
+        -m {{ novnc_letsencrypt_email }}
+        --agree-tos
+      args:
+        creates: "/etc/letsencrypt/live/{{ novnc_tls_domain }}/fullchain.pem"
+      register: novnc_certbot_out
+      changed_when: novnc_certbot_out.rc == 0
