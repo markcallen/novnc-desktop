@@ -4,7 +4,7 @@ auth_token_ttl_seconds: 28800
 
 # Base URL used when building the access URL returned by desktop-url.
 # Should match the public HTTPS address of this host.
-novnc_base_url: "https://{{ inventory_hostname }}"
+novnc_base_url: 'https://{{ inventory_hostname }}'
 
 # Port the auth service listens on (localhost only).
 auth_service_port: 8898

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * browser-smoke.mjs
+ * browser-smoke.ts
  *
  * Smoke test for novnc-desktop. Uses a token-based access URL (no VNC
  * password). Flow:
@@ -12,35 +12,48 @@
  *   4. Take a screenshot.
  */
 
-import process from "node:process";
-import { chromium } from "playwright";
+import process from 'node:process';
+import { chromium } from 'playwright';
+import type { Page } from 'playwright';
 
-function die(message) {
+interface Options {
+  accessUrl: string;
+  screenshot: string;
+  ignoreHttpsErrors: string;
+}
+
+interface CanvasActivity {
+  active: boolean;
+  greenPixels: number;
+  sampledPixels: number;
+}
+
+function die(message: string): never {
   console.error(`[smoke] ERROR: ${message}`);
   process.exit(1);
 }
 
-function parseArgs(argv) {
-  const options = {
-    accessUrl: "",
-    screenshot: "",
-    ignoreHttpsErrors: "false",
+function parseArgs(argv: string[]): Options {
+  const options: Options = {
+    accessUrl: '',
+    screenshot: '',
+    ignoreHttpsErrors: 'false'
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
     switch (arg) {
-      case "--access-url":
-        options.accessUrl = argv[index + 1] ?? "";
+      case '--access-url':
+        options.accessUrl = argv[index + 1] ?? '';
         index += 1;
         break;
-      case "--screenshot":
-        options.screenshot = argv[index + 1] ?? "";
+      case '--screenshot':
+        options.screenshot = argv[index + 1] ?? '';
         index += 1;
         break;
-      case "--ignore-https-errors":
-        options.ignoreHttpsErrors = argv[index + 1] ?? "false";
+      case '--ignore-https-errors':
+        options.ignoreHttpsErrors = argv[index + 1] ?? 'false';
         index += 1;
         break;
       default:
@@ -49,30 +62,35 @@ function parseArgs(argv) {
   }
 
   if (!options.accessUrl) {
-    die("--access-url is required (obtain it by running 'desktop-url' on the host)");
+    die(
+      "--access-url is required (obtain it by running 'desktop-url' on the host)"
+    );
   }
   if (!options.screenshot) {
-    die("--screenshot is required");
+    die('--screenshot is required');
   }
 
   return options;
 }
 
-async function waitForCanvasActivity(page) {
-  await page.waitForFunction(() => {
-    const canvas = document.querySelector("canvas");
-    return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
-  }, { timeout: 60000 });
+async function waitForCanvasActivity(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const canvas = document.querySelector('canvas');
+      return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
+    },
+    { timeout: 60000 }
+  );
 
   await page.waitForTimeout(5000);
 
-  const activity = await page.evaluate(() => {
-    const canvas = document.querySelector("canvas");
+  const activity = await page.evaluate((): CanvasActivity => {
+    const canvas = document.querySelector('canvas');
     if (!canvas) {
       return { active: false, greenPixels: 0, sampledPixels: 0 };
     }
 
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext('2d');
     if (!context) {
       return { active: false, greenPixels: 0, sampledPixels: 0 };
     }
@@ -102,24 +120,24 @@ async function waitForCanvasActivity(page) {
     return {
       active: greenPixels >= 200,
       greenPixels,
-      sampledPixels,
+      sampledPixels
     };
   });
 
   if (!activity.active) {
     throw new Error(
       `Desktop marker not detected in VNC canvas; ` +
-      `greenPixels=${activity.greenPixels}, sampledPixels=${activity.sampledPixels}`
+        `greenPixels=${activity.greenPixels}, sampledPixels=${activity.sampledPixels}`
     );
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
-    ignoreHTTPSErrors: options.ignoreHttpsErrors === "true",
-    viewport: { width: 1440, height: 900 },
+    ignoreHTTPSErrors: options.ignoreHttpsErrors === 'true',
+    viewport: { width: 1440, height: 900 }
   });
   const page = await context.newPage();
 
@@ -128,8 +146,8 @@ async function main() {
     // the HttpOnly cookie, and redirects to vnc.html?autoconnect=1&resize=remote.
     console.log(`[smoke] Navigating to access URL...`);
     await page.goto(options.accessUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
     });
 
     // After the redirect we should be at vnc.html with autoconnect active.
@@ -137,7 +155,9 @@ async function main() {
     console.log(`[smoke] Waiting for VNC canvas activity...`);
     await waitForCanvasActivity(page);
 
-    console.log(`[smoke] Canvas active. Saving screenshot to ${options.screenshot}`);
+    console.log(
+      `[smoke] Canvas active. Saving screenshot to ${options.screenshot}`
+    );
     await page.screenshot({ path: options.screenshot, fullPage: true });
     console.log(`[smoke] PASS`);
   } finally {
@@ -146,6 +166,6 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   die(error instanceof Error ? error.message : String(error));
 });

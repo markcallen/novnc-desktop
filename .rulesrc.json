@@ -1,0 +1,21 @@
+{
+  "targets": ["codex", "claude"],
+  "agents": [
+    "local-dev",
+    "docs",
+    "cicd",
+    "observability",
+    "publishing",
+    "git-hooks",
+    "linting",
+    "logging",
+    "testing"
+  ],
+  "ballastVersion": "5.7.3",
+  "languages": ["ansible", "terraform", "typescript"],
+  "paths": {
+    "ansible": ["."],
+    "terraform": ["smoke/ec2"],
+    "typescript": ["."]
+  }
+}

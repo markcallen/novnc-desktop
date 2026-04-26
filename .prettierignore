@@ -1,0 +1,8 @@
+node_modules
+dist
+playwright-report
+test-results
+pnpm-lock.yaml
+.smoke-artifacts
+.smoke-state
+.smoke-keys

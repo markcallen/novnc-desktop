@@ -7,7 +7,7 @@ desktop_type: openbox
 vnc_user: "{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'root' }}"
 
 # Display resolution.
-vnc_geometry: "1280x720"
+vnc_geometry: '1280x720'
 vnc_depth: 24
 
 # Number of virtual desktops (openbox only).

@@ -1,0 +1,13 @@
+---
+profile: basic
+exclude_paths:
+  - .git/
+  - node_modules/
+  - smoke/
+  - .github/
+warn_list:
+  - yaml[line-length]
+skip_list:
+  - role-name
+  - var-naming[no-role-prefix]
+  - name[casing]

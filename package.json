@@ -1,6 +1,7 @@
 {
   "name": "novnc-desktop",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "packageManager": "pnpm@10.33.2",
   "description": "Playwright smoke test suite for novnc-desktop",
@@ -8,10 +9,25 @@
     "infra:up": "bash smoke/scripts/infra-up.sh",
     "infra:status": "bash smoke/scripts/infra-status.sh",
     "test": "playwright test",
-    "infra:down": "bash smoke/scripts/infra-down.sh"
+    "infra:down": "bash smoke/scripts/infra-down.sh",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prettier": "prettier . --check",
+    "prettier:fix": "prettier . --write",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.45.0",
-    "playwright": "^1.45.0"
+    "@types/node": "^22.0.0",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "globals": "^17.5.0",
+    "husky": "^9.1.7",
+    "playwright": "^1.45.0",
+    "prettier": "^3.8.3",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.59.0"
   }
 }

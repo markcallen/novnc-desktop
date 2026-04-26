@@ -14,26 +14,26 @@
 
 - name: Create .vnc directory
   ansible.builtin.file:
-    path: "{{ vnc_home }}/.vnc"
+    path: '{{ vnc_home }}/.vnc'
     state: directory
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0700"
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0700'
 
 - name: Configure TigerVNC server users
   ansible.builtin.lineinfile:
     path: /etc/tigervnc/vncserver.users
-    regexp: "^:{{ vnc_display }}="
-    line: ":{{ vnc_display }}={{ vnc_user }}"
+    regexp: '^:{{ vnc_display }}='
+    line: ':{{ vnc_display }}={{ vnc_user }}'
     create: true
-    mode: "0644"
+    mode: '0644'
 
 - name: Configure TigerVNC options
   ansible.builtin.copy:
-    dest: "{{ vnc_home }}/.vnc/config"
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0644"
+    dest: '{{ vnc_home }}/.vnc/config'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
     content: |
       geometry={{ vnc_geometry }}
       depth={{ vnc_depth }}
@@ -45,6 +45,6 @@
 
 - name: Enable and start VNC server
   ansible.builtin.systemd:
-    name: "tigervncserver@:{{ vnc_display }}.service"
+    name: 'tigervncserver@:{{ vnc_display }}.service'
     enabled: true
     state: restarted
