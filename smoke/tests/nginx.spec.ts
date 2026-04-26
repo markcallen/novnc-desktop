@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { state } from "./state.mjs";
+import { state } from "./state";
 
 const { publicIp } = state;
 
@@ -22,7 +22,7 @@ test.describe("nginx", () => {
   test("HTTP redirects to HTTPS with 301", async ({ page }) => {
     // Capture all responses so we can inspect the very first one (the 301)
     // before Playwright follows the redirect chain.
-    const responses = [];
+    const responses: import("@playwright/test").Response[] = [];
     page.on("response", (r) => responses.push(r));
 
     // page.goto follows redirects. After the 301 the chain leads to /access

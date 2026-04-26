@@ -10,9 +10,15 @@
 
 import { test, expect } from "@playwright/test";
 import { mkdirSync } from "node:fs";
-import { state } from "./state.mjs";
+import { state } from "./state";
 
 const { accessUrl } = state;
+
+interface CanvasResult {
+  active: boolean;
+  greenPixels: number;
+  sampledPixels: number;
+}
 
 test.describe("desktop", () => {
   test("access URL exchanges token for cookie and redirects to vnc.html", async ({
@@ -51,7 +57,7 @@ test.describe("desktop", () => {
 
     // Step 3: sample the canvas for the bright-green smoke marker xterm.
     // The marker is visible when smoke_test_marker_enabled=true (set by infra-up.sh).
-    const result = await page.evaluate(() => {
+    const result = await page.evaluate((): CanvasResult => {
       const canvas = document.querySelector("canvas");
       if (!canvas) return { active: false, greenPixels: 0, sampledPixels: 0 };
 

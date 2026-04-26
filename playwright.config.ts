@@ -3,17 +3,14 @@ import { readFileSync, existsSync } from "node:fs";
 
 const stateFile = ".smoke-state/state.json";
 
-let state = null;
-if (existsSync(stateFile)) {
-  state = JSON.parse(readFileSync(stateFile, "utf8"));
-}
-
-if (!state) {
+if (!existsSync(stateFile)) {
   throw new Error(
     `\nSmoke state not found at ${stateFile}.\n` +
     `Run 'pnpm infra:up' first to provision the test server.\n`
   );
 }
+
+const state = JSON.parse(readFileSync(stateFile, "utf8")) as { publicIp: string };
 
 export default defineConfig({
   testDir: "smoke/tests",

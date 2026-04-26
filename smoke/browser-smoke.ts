@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * browser-smoke.mjs
+ * browser-smoke.ts
  *
  * Smoke test for novnc-desktop. Uses a token-based access URL (no VNC
  * password). Flow:
@@ -14,14 +14,27 @@
 
 import process from "node:process";
 import { chromium } from "playwright";
+import type { Page } from "playwright";
 
-function die(message) {
+interface Options {
+  accessUrl: string;
+  screenshot: string;
+  ignoreHttpsErrors: string;
+}
+
+interface CanvasActivity {
+  active: boolean;
+  greenPixels: number;
+  sampledPixels: number;
+}
+
+function die(message: string): never {
   console.error(`[smoke] ERROR: ${message}`);
   process.exit(1);
 }
 
-function parseArgs(argv) {
-  const options = {
+function parseArgs(argv: string[]): Options {
+  const options: Options = {
     accessUrl: "",
     screenshot: "",
     ignoreHttpsErrors: "false",
@@ -58,7 +71,7 @@ function parseArgs(argv) {
   return options;
 }
 
-async function waitForCanvasActivity(page) {
+async function waitForCanvasActivity(page: Page): Promise<void> {
   await page.waitForFunction(() => {
     const canvas = document.querySelector("canvas");
     return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
@@ -66,7 +79,7 @@ async function waitForCanvasActivity(page) {
 
   await page.waitForTimeout(5000);
 
-  const activity = await page.evaluate(() => {
+  const activity = await page.evaluate((): CanvasActivity => {
     const canvas = document.querySelector("canvas");
     if (!canvas) {
       return { active: false, greenPixels: 0, sampledPixels: 0 };
@@ -114,7 +127,7 @@ async function waitForCanvasActivity(page) {
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
@@ -146,6 +159,6 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   die(error instanceof Error ? error.message : String(error));
 });

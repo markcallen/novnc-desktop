@@ -4,10 +4,13 @@
  */
 
 import { readFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+export interface SmokeState {
+  publicIp: string;
+  accessUrl: string;
+}
+
 const stateFile = join(__dirname, "../../.smoke-state/state.json");
 
 if (!existsSync(stateFile)) {
@@ -17,4 +20,4 @@ if (!existsSync(stateFile)) {
   );
 }
 
-export const state = JSON.parse(readFileSync(stateFile, "utf8"));
+export const state: SmokeState = JSON.parse(readFileSync(stateFile, "utf8"));
