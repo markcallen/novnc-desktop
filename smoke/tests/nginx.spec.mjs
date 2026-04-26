@@ -13,8 +13,9 @@ const { publicIp } = state;
 test.describe("nginx", () => {
   test("HTTPS endpoint responds", async ({ request }) => {
     // baseURL is https://ip so a relative path uses HTTPS.
-    // /access without a token is public and handled by the auth service (non-5xx).
-    const response = await request.get("/access");
+    // /access without a token redirects to / which redirects back — use
+    // maxRedirects:0 to capture the first response and avoid the loop.
+    const response = await request.get("/access", { maxRedirects: 0 });
     expect(response.status()).toBeLessThan(500);
   });
 
