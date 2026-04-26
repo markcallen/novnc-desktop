@@ -1,0 +1,48 @@
+# AGENTS.md
+
+This file provides shared repository guidance for agent tools that read AGENTS.md.
+
+## Repository Facts
+
+Use this section for durable repo-specific facts that agents repeatedly need. Prefer facts stored here over re-deriving them with shell commands on every task.
+
+Keep only stable, reviewable metadata here. Do not store secrets, credentials, or ephemeral runtime state.
+
+Suggested facts to record:
+
+- Canonical GitHub repo: `<OWNER/REPO>`
+- Default branch: `<main>`
+- Primary package manager: `<pnpm | npm | yarn | uv | go>`
+- Version-file locations agents should check first: `<.nvmrc, packageManager, pyproject.toml, go.mod, etc.>`
+- Canonical config files: `<paths agents should read before falling back to discovery>`
+- Primary CI workflows: `<workflow filenames>`
+- Primary release/publish workflows: `<workflow filenames>`
+- Preferred build/test/lint/format/coverage commands: `<commands>`
+- Coverage threshold: `<value>`
+- Generated or protected paths agents should avoid editing directly: `<paths>`
+
+Update this section when those facts change. If live runtime state is required, discover it separately instead of treating it as a durable repo fact.
+
+## Installed agent rules
+
+Created by Ballast. Do not edit this section.
+
+Read and follow these rule files in `.codex/rules/` when they apply:
+
+- `.codex/rules/common/local-dev-badges.md` — Rules for common/local-dev-badges
+- `.codex/rules/common/local-dev-env.md` — Rules for common/local-dev-env
+- `.codex/rules/common/local-dev-license.md` — Rules for common/local-dev-license
+- `.codex/rules/common/local-dev-mcp.md` — Rules for common/local-dev-mcp
+- `.codex/rules/common/docs.md` — Rules for common/docs
+- `.codex/rules/common/cicd.md` — Rules for common/cicd
+- `.codex/rules/common/observability.md` — Rules for common/observability
+- `.codex/rules/common/publishing-libraries.md` — Rules for common/publishing-libraries
+- `.codex/rules/common/publishing-sdks.md` — Rules for common/publishing-sdks
+- `.codex/rules/common/publishing-apps.md` — Rules for common/publishing-apps
+- `.codex/rules/common/git-hooks.md` — Rules for common/git-hooks
+- `.codex/rules/ansible/ansible-linting.md` — Rules for ansible/linting
+- `.codex/rules/ansible/ansible-logging.md` — Rules for ansible/logging
+- `.codex/rules/ansible/ansible-testing.md` — Rules for ansible/testing
+- `.codex/rules/terraform/terraform-linting.md` — Rules for terraform/linting
+- `.codex/rules/terraform/terraform-logging.md` — Rules for terraform/logging
+- `.codex/rules/terraform/terraform-testing.md` — Rules for terraform/testing
