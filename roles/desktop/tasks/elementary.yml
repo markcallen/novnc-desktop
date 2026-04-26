@@ -43,6 +43,14 @@
   ansible.builtin.set_fact:
     desktop_vnc_home: "{{ '/root' if vnc_user == 'root' else '/home/' + vnc_user }}"
 
+- name: Create .vnc directory
+  ansible.builtin.file:
+    path: "{{ desktop_vnc_home }}/.vnc"
+    state: directory
+    owner: "{{ vnc_user }}"
+    group: "{{ vnc_user }}"
+    mode: "0700"
+
 - name: Deploy Pantheon xstartup
   ansible.builtin.template:
     src: xstartup-elementary.j2

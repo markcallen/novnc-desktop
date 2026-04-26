@@ -23,5 +23,12 @@ node_modules/
 
 # terraform local runtime state
 smoke/ec2/.terraform/
+smoke/ec2/terraform.tfstate
+smoke/ec2/terraform.tfstate.backup
 smoke/ec2/terraform.tfstate.d/
+smoke/ec2/terraform.tfvars
 .ballast/
+
+# playwright
+playwright-report/
+test-results/

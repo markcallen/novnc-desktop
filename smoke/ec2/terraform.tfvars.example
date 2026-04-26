@@ -1,0 +1,19 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — do not commit it.
+#
+# An SSH key pair is generated automatically — no existing key pair needed.
+# The private key is written to .smoke-keys/smoke.pem after 'npm run infra:up'.
+
+aws_region = "us-east-1"
+stack_name = "smoke"
+
+# Restrict SSH to your current public IP for security.
+# Find it with: curl -s https://checkip.amazonaws.com
+ssh_cidr = "1.2.3.4/32"
+
+# HTTP is needed only if using certbot for Let's Encrypt validation.
+# For self-signed TLS (the default) you can restrict this to your IP too.
+http_cidr = "0.0.0.0/0"
+
+# HTTPS can be restricted to your IP if you only need personal access.
+https_cidr = "0.0.0.0/0"

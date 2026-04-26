@@ -55,6 +55,12 @@
     - default_browser == "chrome"
     - ansible_architecture == "x86_64"
 
+- name: Install Firefox
+  ansible.builtin.apt:
+    name: firefox
+    state: present
+  when: default_browser == "firefox"
+
 - name: Set default browser to Chrome
   community.general.alternatives:
     name: x-www-browser

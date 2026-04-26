@@ -1,3 +1,31 @@
+# ---------------------------------------------------------------------------
+# SSH key pair — generated fresh for every new stack, stored locally.
+# The private key is written to .smoke-keys/smoke.pem (gitignored).
+# ---------------------------------------------------------------------------
+resource "tls_private_key" "smoke" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "aws_key_pair" "smoke" {
+  key_name   = local.resource_name
+  public_key = tls_private_key.smoke.public_key_openssh
+
+  tags = {
+    Name    = local.resource_name
+    Purpose = "smoke-test"
+    Stack   = local.stack_name
+  }
+}
+
+# Write the private key to .smoke-keys/smoke.pem (parent dir created by infra-up.sh).
+resource "local_file" "smoke_pem" {
+  content         = tls_private_key.smoke.private_key_pem
+  filename        = "${path.root}/../../.smoke-keys/smoke.pem"
+  file_permission = "0600"
+}
+
+# ---------------------------------------------------------------------------
 data "aws_vpc" "default" {
   default = true
 }
@@ -111,7 +139,7 @@ resource "aws_instance" "smoke" {
   instance_type               = var.instance_type
   subnet_id                   = local.selected_subnet_id
   vpc_security_group_ids      = [aws_security_group.smoke.id]
-  key_name                    = var.key_name
+  key_name                    = aws_key_pair.smoke.key_name
   associate_public_ip_address = true
 
   root_block_device {

@@ -32,11 +32,6 @@ variable "availability_zone" {
   default     = ""
 }
 
-variable "key_name" {
-  description = "Existing AWS EC2 key pair name used to access the instance."
-  type        = string
-}
-
 variable "instance_type" {
   description = "EC2 instance type for the smoke test host."
   type        = string
