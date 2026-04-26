@@ -1,5 +1,8 @@
 {
-  "targets": ["codex", "claude"],
+  "targets": [
+    "codex",
+    "claude"
+  ],
   "agents": [
     "local-dev",
     "docs",
@@ -11,11 +14,24 @@
     "logging",
     "testing"
   ],
-  "ballastVersion": "5.7.3",
-  "languages": ["ansible", "terraform", "typescript"],
+  "skills": [
+    "github-health-check"
+  ],
+  "ballastVersion": "5.7.4",
+  "languages": [
+    "ansible",
+    "terraform",
+    "typescript"
+  ],
   "paths": {
-    "ansible": ["."],
-    "terraform": ["smoke/ec2"],
-    "typescript": ["."]
+    "ansible": [
+      "."
+    ],
+    "terraform": [
+      "smoke/ec2"
+    ],
+    "typescript": [
+      "."
+    ]
   }
 }
