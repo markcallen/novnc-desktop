@@ -28,3 +28,17 @@ updates:
     directory: /
     schedule:
       interval: weekly
+
+  - package-ecosystem: ansible
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: terraform
+    directory: /smoke/ec2
+    schedule:
+      interval: weekly
+    groups:
+      terraform-providers:
+        patterns:
+          - '*'
