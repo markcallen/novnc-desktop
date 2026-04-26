@@ -1,0 +1,10 @@
+---
+profile: production
+exclude_paths:
+  - .git/
+  - node_modules/
+  - smoke/
+warn_list:
+  - yaml[line-length]
+skip_list:
+  - role-name

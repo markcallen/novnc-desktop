@@ -8,9 +8,9 @@
  * sets this automatically).
  */
 
-import { test, expect } from "@playwright/test";
-import { mkdirSync } from "node:fs";
-import { state } from "./state";
+import { test, expect } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+import { state } from './state';
 
 const { accessUrl } = state;
 
@@ -20,13 +20,13 @@ interface CanvasResult {
   sampledPixels: number;
 }
 
-test.describe("desktop", () => {
-  test("access URL exchanges token for cookie and redirects to vnc.html", async ({
-    page,
+test.describe('desktop', () => {
+  test('access URL exchanges token for cookie and redirects to vnc.html', async ({
+    page
   }) => {
     const response = await page.goto(accessUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 60_000,
+      waitUntil: 'domcontentloaded',
+      timeout: 60_000
     });
 
     // The auth service returns 302 → vnc.html; Playwright follows the redirect.
@@ -37,16 +37,16 @@ test.describe("desktop", () => {
     expect(response?.status()).toBeLessThan(400);
   });
 
-  test("VNC canvas renders desktop with smoke marker", async ({ page }) => {
+  test('VNC canvas renders desktop with smoke marker', async ({ page }) => {
     await page.goto(accessUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 60_000,
+      waitUntil: 'domcontentloaded',
+      timeout: 60_000
     });
 
     // Step 1: wait for the noVNC canvas to exist with non-zero dimensions.
     await page.waitForFunction(
       () => {
-        const canvas = document.querySelector("canvas");
+        const canvas = document.querySelector('canvas');
         return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
       },
       { timeout: 60_000 }
@@ -58,10 +58,10 @@ test.describe("desktop", () => {
     // Step 3: sample the canvas for the bright-green smoke marker xterm.
     // The marker is visible when smoke_test_marker_enabled=true (set by infra-up.sh).
     const result = await page.evaluate((): CanvasResult => {
-      const canvas = document.querySelector("canvas");
+      const canvas = document.querySelector('canvas');
       if (!canvas) return { active: false, greenPixels: 0, sampledPixels: 0 };
 
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext('2d');
       if (!ctx) return { active: false, greenPixels: 0, sampledPixels: 0 };
 
       const sampleW = Math.min(canvas.width, 500);
@@ -83,10 +83,10 @@ test.describe("desktop", () => {
     });
 
     // Save a screenshot as a test artifact regardless of pass/fail.
-    mkdirSync(".smoke-artifacts", { recursive: true });
+    mkdirSync('.smoke-artifacts', { recursive: true });
     await page.screenshot({
-      path: ".smoke-artifacts/desktop-final.png",
-      fullPage: true,
+      path: '.smoke-artifacts/desktop-final.png',
+      fullPage: true
     });
 
     expect(

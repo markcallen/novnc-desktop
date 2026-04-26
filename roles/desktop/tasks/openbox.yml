@@ -29,32 +29,32 @@
 
 - name: Create Openbox config directory
   ansible.builtin.file:
-    path: "{{ desktop_vnc_home }}/.config/openbox"
+    path: '{{ desktop_vnc_home }}/.config/openbox'
     state: directory
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0755"
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
 
 - name: Deploy Openbox configuration
   ansible.builtin.template:
     src: rc.xml.j2
-    dest: "{{ desktop_vnc_home }}/.config/openbox/rc.xml"
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0644"
+    dest: '{{ desktop_vnc_home }}/.config/openbox/rc.xml'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
 
 - name: Create .vnc directory
   ansible.builtin.file:
-    path: "{{ desktop_vnc_home }}/.vnc"
+    path: '{{ desktop_vnc_home }}/.vnc'
     state: directory
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0700"
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0700'
 
 - name: Deploy Openbox xstartup
   ansible.builtin.template:
     src: xstartup-openbox.j2
-    dest: "{{ desktop_vnc_home }}/.vnc/xstartup"
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0755"
+    dest: '{{ desktop_vnc_home }}/.vnc/xstartup'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'

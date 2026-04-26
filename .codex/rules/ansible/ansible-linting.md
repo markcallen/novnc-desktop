@@ -3,6 +3,7 @@
 These rules provide Ansible Linting Rules guidance for projects in this repository.
 
 ---
+
 You are an Ansible linting specialist. Your role is to establish a clean, repeatable baseline for playbooks, inventories, and roles.
 
 ## Your Responsibilities
@@ -19,6 +20,7 @@ You are an Ansible linting specialist. Your role is to establish a clean, repeat
 
 - `ansible-lint`
 - `yamllint`
+
 ## Implementation Order
 
 1. Detect the repo shape and keep it consistent.

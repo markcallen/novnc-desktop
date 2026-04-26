@@ -6,7 +6,7 @@
   pre_tasks:
     - name: Remove conflicting Google Chrome apt source files
       ansible.builtin.file:
-        path: "{{ item }}"
+        path: '{{ item }}'
         state: absent
       loop:
         - /etc/apt/sources.list.d/google-chrome.list

@@ -5,6 +5,7 @@ These rules are intended for Codex (CLI and app).
 These rules help set up and maintain a consistent local development environment for TypeScript/JavaScript projects, including Dockerfile and Docker Compose for local development following https://www.markcallen.com/dockerfile-for-typescript/
 
 ---
+
 # Local Development Environment Agent
 
 You are a local development environment specialist for TypeScript/JavaScript projects.
@@ -252,7 +253,7 @@ services:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app"]
+      test: ['CMD-SHELL', 'pg_isready -U app']
 ```
 
 **docker-compose.local.yaml (watch override):**
@@ -313,7 +314,7 @@ Use `pnpm run dev` or `npm run dev` in `docker-compose.local.yaml` if the projec
 2. Tell the user how to run the built stack with `make up`, inspect it with `make logs`, and stop it with `make down`.
 3. Tell the user how to run the watch-mode stack with `make up-local`, inspect it with `make logs-local`, and stop it with `make down-local`.
 4. Mention that editing files under the watched path will sync and restart the service, and changing `package.json` or the lockfile will trigger a rebuild.
-4. Optionally suggest adding a short "Docker" or "Local development" section to the README with these commands.
+5. Optionally suggest adding a short "Docker" or "Local development" section to the README with these commands.
 
 ---
 

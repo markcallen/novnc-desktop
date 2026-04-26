@@ -56,74 +56,74 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 
 ### FR-1 — Provisioning
 
-| ID | Requirement |
-|----|-------------|
+| ID     | Requirement                                                                                                                           |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-1.1 | Running `ansible-playbook site.yml` on a clean Ubuntu 24.04 host completes without error and leaves the desktop reachable over HTTPS. |
-| FR-1.2 | The playbook is idempotent. Re-running it on an already-provisioned host makes no disruptive changes. |
-| FR-1.3 | The `desktop_type` variable selects the desktop environment. Accepted values: `openbox` (default), `elementary`, `deepin`. |
-| FR-1.4 | An unsupported `desktop_type` value causes the playbook to fail with a clear error message before making any changes. |
+| FR-1.2 | The playbook is idempotent. Re-running it on an already-provisioned host makes no disruptive changes.                                 |
+| FR-1.3 | The `desktop_type` variable selects the desktop environment. Accepted values: `openbox` (default), `elementary`, `deepin`.            |
+| FR-1.4 | An unsupported `desktop_type` value causes the playbook to fail with a clear error message before making any changes.                 |
 
 ### FR-2 — Access security
 
-| ID | Requirement |
-|----|-------------|
-| FR-2.1 | TigerVNC binds to `127.0.0.1` only and is configured with `SecurityTypes=None`. VNC is not directly reachable from outside the host. |
-| FR-2.2 | All public traffic is served by Nginx over HTTPS. HTTP requests are redirected to HTTPS. |
-| FR-2.3 | Every request to the noVNC interface is gated by an Nginx `auth_request` subrequest to the `novnc-auth` service. Unauthenticated requests receive a `302` redirect to `/access`. |
-| FR-2.4 | Access tokens are HMAC-SHA256 signed, contain an expiry timestamp, and are verified on every request. A tampered or expired token is rejected. |
+| ID     | Requirement                                                                                                                                                                                                 |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-2.1 | TigerVNC binds to `127.0.0.1` only and is configured with `SecurityTypes=None`. VNC is not directly reachable from outside the host.                                                                        |
+| FR-2.2 | All public traffic is served by Nginx over HTTPS. HTTP requests are redirected to HTTPS.                                                                                                                    |
+| FR-2.3 | Every request to the noVNC interface is gated by an Nginx `auth_request` subrequest to the `novnc-auth` service. Unauthenticated requests receive a `302` redirect to `/access`.                            |
+| FR-2.4 | Access tokens are HMAC-SHA256 signed, contain an expiry timestamp, and are verified on every request. A tampered or expired token is rejected.                                                              |
 | FR-2.5 | The HMAC secret is generated randomly at provisioning time and stored at `/etc/novnc-auth/secret` (mode `0600`, owned by the `novnc-auth` service user). It is never written to a playbook variable or log. |
-| FR-2.6 | The token-generation endpoint (`POST /generate`) is blocked by Nginx for all external requests. It is reachable only from `127.0.0.1`. |
-| FR-2.7 | The access cookie is set `HttpOnly`, `Secure`, `SameSite=Lax`, scoped to `Path=/`, with `Max-Age` matching the token TTL. |
+| FR-2.6 | The token-generation endpoint (`POST /generate`) is blocked by Nginx for all external requests. It is reachable only from `127.0.0.1`.                                                                      |
+| FR-2.7 | The access cookie is set `HttpOnly`, `Secure`, `SameSite=Lax`, scoped to `Path=/`, with `Max-Age` matching the token TTL.                                                                                   |
 
 ### FR-3 — `desktop-url` command
 
-| ID | Requirement |
-|----|-------------|
-| FR-3.1 | `desktop-url` is installed to `/usr/local/bin/desktop-url` and is executable by any user on the host. |
-| FR-3.2 | Running `desktop-url` prints a complete HTTPS URL and its expiry time to stdout. |
+| ID     | Requirement                                                                                                                                                                       |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-3.1 | `desktop-url` is installed to `/usr/local/bin/desktop-url` and is executable by any user on the host.                                                                             |
+| FR-3.2 | Running `desktop-url` prints a complete HTTPS URL and its expiry time to stdout.                                                                                                  |
 | FR-3.3 | The URL, when opened in a browser, authenticates the session, sets the access cookie, and redirects to `vnc.html?autoconnect=1&resize=remote` without any additional user action. |
-| FR-3.4 | The default token TTL is 8 hours. It is configurable via the `auth_token_ttl_seconds` variable. |
-| FR-3.5 | If the `novnc-auth` service is not running, `desktop-url` exits with a non-zero status and a human-readable error message. |
+| FR-3.4 | The default token TTL is 8 hours. It is configurable via the `auth_token_ttl_seconds` variable.                                                                                   |
+| FR-3.5 | If the `novnc-auth` service is not running, `desktop-url` exits with a non-zero status and a human-readable error message.                                                        |
 
 ### FR-4 — TLS certificates
 
-| ID | Requirement |
-|----|-------------|
-| FR-4.1 | A self-signed certificate valid for 730 days is generated at provisioning time and used by default. Nginx starts successfully with this certificate. |
+| ID     | Requirement                                                                                                                                                                                                 |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-4.1 | A self-signed certificate valid for 730 days is generated at provisioning time and used by default. Nginx starts successfully with this certificate.                                                        |
 | FR-4.2 | When `use_certbot: true` is set, `tls_domain` resolves to a publicly routable IP address, and `letsencrypt_email` is configured, the role obtains a Let's Encrypt certificate via the Nginx certbot plugin. |
-| FR-4.3 | If any condition for FR-4.2 is not met, the role falls back to the self-signed certificate without failing. The fallback reason is reported via an Ansible debug message. |
+| FR-4.3 | If any condition for FR-4.2 is not met, the role falls back to the self-signed certificate without failing. The fallback reason is reported via an Ansible debug message.                                   |
 
 ### FR-5 — Desktop environments
 
-| ID | Requirement |
-|----|-------------|
-| FR-5.1 | **Openbox**: installs `openbox`, `tint2`, and `xterm`. Fully supported on Ubuntu 24.04 from main repos. |
+| ID     | Requirement                                                                                                                                                                                                       |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-5.1 | **Openbox**: installs `openbox`, `tint2`, and `xterm`. Fully supported on Ubuntu 24.04 from main repos.                                                                                                           |
 | FR-5.2 | **Elementary (Pantheon)**: installs from `ppa:elementary-os/stable`. Treated as best-effort; if the PPA does not support the host's Ubuntu release the task warns and continues rather than failing the playbook. |
-| FR-5.3 | **Deepin**: installs `deepin-desktop-environment` from the Ubuntu universe repository. Treated as best-effort with the same warn-and-continue behaviour as FR-5.2. |
-| FR-5.4 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership. |
+| FR-5.3 | **Deepin**: installs `deepin-desktop-environment` from the Ubuntu universe repository. Treated as best-effort with the same warn-and-continue behaviour as FR-5.2.                                                |
+| FR-5.4 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                         |
 
 ### FR-6 — `novnc-auth` service
 
-| ID | Requirement |
-|----|-------------|
-| FR-6.1 | The service runs as a dedicated system user `novnc-auth` (no login shell, no home directory access). |
-| FR-6.2 | The service is managed by systemd, starts automatically on boot, and restarts on failure. |
-| FR-6.3 | The service is implemented in Python 3 using only the standard library. No `pip` installation is required. |
-| FR-6.4 | `GET /access?token=<tok>` validates the token, sets the access cookie, and redirects to `vnc.html?autoconnect=1&resize=remote`. |
+| ID     | Requirement                                                                                                                       |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| FR-6.1 | The service runs as a dedicated system user `novnc-auth` (no login shell, no home directory access).                              |
+| FR-6.2 | The service is managed by systemd, starts automatically on boot, and restarts on failure.                                         |
+| FR-6.3 | The service is implemented in Python 3 using only the standard library. No `pip` installation is required.                        |
+| FR-6.4 | `GET /access?token=<tok>` validates the token, sets the access cookie, and redirects to `vnc.html?autoconnect=1&resize=remote`.   |
 | FR-6.5 | `GET /verify` checks the access cookie. Returns `200` if valid, `401` otherwise. This endpoint is called by Nginx `auth_request`. |
-| FR-6.6 | `POST /generate` mints a new token and returns `{"url": "...", "token": "...", "expires_at": "..."}`. |
+| FR-6.6 | `POST /generate` mints a new token and returns `{"url": "...", "token": "...", "expires_at": "..."}`.                             |
 
 ---
 
 ## Non-Functional Requirements
 
-| ID | Requirement |
-|----|-------------|
-| NFR-1 | **Idempotency.** The playbook can be run multiple times without disrupting an active desktop session or regenerating the HMAC secret. |
-| NFR-2 | **Minimal footprint.** The role installs only what is needed. It does not install Node.js, Docker, or any runtime not already implied by the selected desktop type. |
+| ID    | Requirement                                                                                                                                                            |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NFR-1 | **Idempotency.** The playbook can be run multiple times without disrupting an active desktop session or regenerating the HMAC secret.                                  |
+| NFR-2 | **Minimal footprint.** The role installs only what is needed. It does not install Node.js, Docker, or any runtime not already implied by the selected desktop type.    |
 | NFR-3 | **No external API calls at access time.** Token validation is purely local (HMAC verification + timestamp check). The `novnc-auth` service makes no outbound requests. |
-| NFR-4 | **Composability.** The role exposes clean variable interfaces so it can be imported and overridden by a parent playbook (e.g. `ai-agent-desktop`) without forking. |
-| NFR-5 | **Firewall by default.** UFW is enabled at the end of provisioning. Only SSH (22) and Nginx Full (80, 443) are permitted inbound. |
+| NFR-4 | **Composability.** The role exposes clean variable interfaces so it can be imported and overridden by a parent playbook (e.g. `ai-agent-desktop`) without forking.     |
+| NFR-5 | **Firewall by default.** UFW is enabled at the end of provisioning. Only SSH (22) and Nginx Full (80, 443) are permitted inbound.                                      |
 
 ---
 
@@ -161,34 +161,34 @@ SSH user
 
 ### Key components
 
-| Component | Technology | Notes |
-|-----------|-----------|-------|
-| Desktop session | TigerVNC + xstartup | `SecurityTypes=None`; localhost-only |
-| WebSocket proxy | websockify + noVNC | systemd service; localhost-only |
-| Auth service | Python 3 stdlib | `novnc-auth.py`; HMAC-SHA256 tokens |
-| Reverse proxy | Nginx | TLS termination + `auth_request` |
-| TLS | openssl (self-signed) / certbot | self-signed by default |
-| Firewall | UFW | SSH + Nginx Full only |
+| Component       | Technology                      | Notes                                |
+| --------------- | ------------------------------- | ------------------------------------ |
+| Desktop session | TigerVNC + xstartup             | `SecurityTypes=None`; localhost-only |
+| WebSocket proxy | websockify + noVNC              | systemd service; localhost-only      |
+| Auth service    | Python 3 stdlib                 | `novnc-auth.py`; HMAC-SHA256 tokens  |
+| Reverse proxy   | Nginx                           | TLS termination + `auth_request`     |
+| TLS             | openssl (self-signed) / certbot | self-signed by default               |
+| Firewall        | UFW                             | SSH + Nginx Full only                |
 
 ---
 
 ## Configuration Reference
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `desktop_type` | `openbox` | Desktop environment: `openbox`, `elementary`, `deepin` |
-| `vnc_user` | `ubuntu` | OS user that owns the desktop session |
-| `vnc_display` | `1` | X display number |
-| `vnc_geometry` | `1280x720` | Screen resolution |
-| `vnc_depth` | `24` | Colour depth |
-| `default_browser` | `firefox` | Browser installed alongside the desktop: `firefox`, `chrome` |
-| `auth_token_ttl_seconds` | `28800` | Token lifetime (8 hours) |
-| `novnc_base_url` | `https://{{ inventory_hostname }}` | Base URL embedded in generated access URLs |
-| `auth_service_port` | `8898` | Port the `novnc-auth` service listens on (localhost only) |
-| `use_certbot` | `false` | Attempt Let's Encrypt certificate acquisition |
-| `tls_domain` | `{{ inventory_hostname }}` | Domain for the TLS certificate |
-| `letsencrypt_email` | `""` | Email for Let's Encrypt registration |
-| `smoke_test_marker_enabled` | `false` | Renders a bright-green xterm for smoke test canvas verification |
+| Variable                    | Default                            | Description                                                     |
+| --------------------------- | ---------------------------------- | --------------------------------------------------------------- |
+| `desktop_type`              | `openbox`                          | Desktop environment: `openbox`, `elementary`, `deepin`          |
+| `vnc_user`                  | `ubuntu`                           | OS user that owns the desktop session                           |
+| `vnc_display`               | `1`                                | X display number                                                |
+| `vnc_geometry`              | `1280x720`                         | Screen resolution                                               |
+| `vnc_depth`                 | `24`                               | Colour depth                                                    |
+| `default_browser`           | `firefox`                          | Browser installed alongside the desktop: `firefox`, `chrome`    |
+| `auth_token_ttl_seconds`    | `28800`                            | Token lifetime (8 hours)                                        |
+| `novnc_base_url`            | `https://{{ inventory_hostname }}` | Base URL embedded in generated access URLs                      |
+| `auth_service_port`         | `8898`                             | Port the `novnc-auth` service listens on (localhost only)       |
+| `use_certbot`               | `false`                            | Attempt Let's Encrypt certificate acquisition                   |
+| `tls_domain`                | `{{ inventory_hostname }}`         | Domain for the TLS certificate                                  |
+| `letsencrypt_email`         | `""`                               | Email for Let's Encrypt registration                            |
+| `smoke_test_marker_enabled` | `false`                            | Renders a bright-green xterm for smoke test canvas verification |
 
 ---
 

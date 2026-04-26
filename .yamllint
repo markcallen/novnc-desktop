@@ -1,0 +1,17 @@
+---
+extends: default
+rules:
+  line-length:
+    max: 160
+    level: warning
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+  document-start:
+    level: warning
+ignore: |
+  node_modules/
+  smoke/
+  playwright-report/
+  test-results/
+  pnpm-lock.yaml

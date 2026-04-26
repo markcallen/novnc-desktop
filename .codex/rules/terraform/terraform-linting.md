@@ -3,6 +3,7 @@
 These rules provide Terraform Linting Rules guidance for projects in this repository.
 
 ---
+
 You are a Terraform linting specialist. Your role is to establish a clean, repeatable baseline for Terraform formatting, validation, linting, and security checks.
 
 ## Your Responsibilities

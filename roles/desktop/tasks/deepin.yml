@@ -4,7 +4,7 @@
 
 - name: Enable universe repository
   ansible.builtin.apt_repository:
-    repo: "deb http://archive.ubuntu.com/ubuntu {{ ansible_distribution_release }} universe"
+    repo: 'deb http://archive.ubuntu.com/ubuntu {{ ansible_distribution_release }} universe'
     state: present
     update_cache: true
 
@@ -26,7 +26,7 @@
 
 - name: Mask display manager to prevent it conflicting with VNC
   ansible.builtin.systemd:
-    name: "{{ item }}"
+    name: '{{ item }}'
     masked: true
     daemon_reload: false
   loop:
@@ -41,16 +41,16 @@
 
 - name: Create .vnc directory
   ansible.builtin.file:
-    path: "{{ desktop_vnc_home }}/.vnc"
+    path: '{{ desktop_vnc_home }}/.vnc'
     state: directory
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0700"
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0700'
 
 - name: Deploy Deepin xstartup
   ansible.builtin.template:
     src: xstartup-deepin.j2
-    dest: "{{ desktop_vnc_home }}/.vnc/xstartup"
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0755"
+    dest: '{{ desktop_vnc_home }}/.vnc/xstartup'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'

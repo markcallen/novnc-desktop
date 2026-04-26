@@ -6,7 +6,7 @@
     shell: /usr/sbin/nologin
     home: /var/lib/novnc-auth
     create_home: true
-    comment: "noVNC token auth service"
+    comment: 'noVNC token auth service'
 
 - name: Create /etc/novnc-auth directory
   ansible.builtin.file:
@@ -14,7 +14,7 @@
     state: directory
     owner: novnc-auth
     group: novnc-auth
-    mode: "0750"
+    mode: '0750'
 
 - name: Generate HMAC secret (if not already present)
   ansible.builtin.shell: |
@@ -32,7 +32,7 @@
     dest: /etc/novnc-auth/config.json
     owner: novnc-auth
     group: novnc-auth
-    mode: "0640"
+    mode: '0640'
   notify: Restart novnc-auth
 
 - name: Create auth service library directory
@@ -41,7 +41,7 @@
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: '0755'
 
 - name: Install novnc-auth Python service
   ansible.builtin.copy:
@@ -49,14 +49,14 @@
     dest: /usr/local/lib/novnc-auth/novnc-auth.py
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
   notify: Restart novnc-auth
 
 - name: Install systemd unit for novnc-auth
   ansible.builtin.template:
     src: novnc-auth.service.j2
     dest: /etc/systemd/system/novnc-auth.service
-    mode: "0644"
+    mode: '0644'
   notify:
     - Reload systemd
     - Restart novnc-auth
@@ -67,7 +67,7 @@
     dest: /usr/local/bin/desktop-url
     owner: root
     group: root
-    mode: "0755"
+    mode: '0755'
 
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers

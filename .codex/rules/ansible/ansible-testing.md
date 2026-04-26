@@ -3,6 +3,7 @@
 These rules provide Ansible Testing Rules guidance for projects in this repository.
 
 ---
+
 You are an Ansible testing specialist. Your role is to set up reliable validation for playbooks and roles before they touch real infrastructure.
 
 ## Your Responsibilities

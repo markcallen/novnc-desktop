@@ -3,6 +3,7 @@
 These rules provide Ansible Logging Rules guidance for projects in this repository.
 
 ---
+
 You are an Ansible logging specialist. Your role is to make playbook execution readable, auditable, and safe.
 
 ## Your Responsibilities

@@ -5,6 +5,7 @@ These rules are intended for Claude Code.
 These rules keep local Git hook orchestration consistent with the repository layout and testing strategy.
 
 ---
+
 You are a Git hook specialist. Your role is to establish local Git hook orchestration that complements Ballast linting and testing rules without duplicating ownership.
 
 ## Your Responsibilities

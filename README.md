@@ -1,5 +1,10 @@
 # novnc-desktop
 
+[![Lint](https://github.com/markcallen/novnc-desktop/actions/workflows/lint.yml/badge.svg)](https://github.com/markcallen/novnc-desktop/actions/workflows/lint.yml)
+[![Ansible Lint](https://github.com/markcallen/novnc-desktop/actions/workflows/ansible-lint.yml/badge.svg)](https://github.com/markcallen/novnc-desktop/actions/workflows/ansible-lint.yml)
+[![License](https://img.shields.io/github/license/markcallen/novnc-desktop)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/markcallen/novnc-desktop)](https://github.com/markcallen/novnc-desktop/releases)
+
 An Ansible role that provisions a secure, browser-accessible Linux desktop on any Ubuntu 24.04 LTS host. Access is token-secured over HTTPS — no VNC client, no password prompt, no port forwarding required.
 
 ## Requirements
@@ -52,13 +57,13 @@ cp smoke/ec2/terraform.tfvars.example smoke/ec2/terraform.tfvars
 
 Edit `smoke/ec2/terraform.tfvars` and fill in your values:
 
-| Variable     | Description |
-|--------------|-------------|
-| `aws_region` | AWS region (e.g. `us-east-1`) |
-| `stack_name` | Logical name for this stack (e.g. `smoke`) |
+| Variable     | Description                                                            |
+| ------------ | ---------------------------------------------------------------------- |
+| `aws_region` | AWS region (e.g. `us-east-1`)                                          |
+| `stack_name` | Logical name for this stack (e.g. `smoke`)                             |
 | `ssh_cidr`   | Your public IP in `/32` form — `curl -s https://checkip.amazonaws.com` |
 | `http_cidr`  | CIDR for HTTP access (use `0.0.0.0/0` for certbot, otherwise restrict) |
-| `https_cidr` | CIDR for HTTPS access |
+| `https_cidr` | CIDR for HTTPS access                                                  |
 
 An SSH key pair is generated automatically — no pre-existing EC2 key pair is needed.
 
@@ -103,14 +108,18 @@ ansible-playbook site.yml -i <host>, -u ubuntu --private-key ~/.ssh/key.pem
 
 Key variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `desktop_type` | `openbox` | Desktop environment: `openbox`, `elementary`, `deepin` |
-| `vnc_user` | `ubuntu` | OS user that owns the desktop session |
-| `vnc_geometry` | `1280x720` | Screen resolution |
-| `default_browser` | `firefox` | Browser: `firefox` or `chrome` |
-| `auth_token_ttl_seconds` | `28800` | Token lifetime in seconds (default 8 hours) |
-| `use_certbot` | `false` | Attempt Let's Encrypt certificate acquisition |
-| `smoke_test_marker_enabled` | `false` | Render green xterm marker for canvas verification |
+| Variable                    | Default    | Description                                            |
+| --------------------------- | ---------- | ------------------------------------------------------ |
+| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`, `deepin` |
+| `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session                  |
+| `vnc_geometry`              | `1280x720` | Screen resolution                                      |
+| `default_browser`           | `firefox`  | Browser: `firefox` or `chrome`                         |
+| `auth_token_ttl_seconds`    | `28800`    | Token lifetime in seconds (default 8 hours)            |
+| `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition          |
+| `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification      |
 
 After provisioning, SSH in and run `desktop-url` to get a signed HTTPS URL for the desktop.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.

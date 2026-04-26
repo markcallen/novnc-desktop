@@ -13,7 +13,7 @@
 
 - name: Set TLS domain fact
   ansible.builtin.set_fact:
-    novnc_tls_domain: "{{ tls_domain | default(inventory_hostname) }}"
+    novnc_tls_domain: '{{ tls_domain | default(inventory_hostname) }}'
 
 - name: Set Let's Encrypt email fact
   ansible.builtin.set_fact:
@@ -74,7 +74,7 @@
   ansible.builtin.file:
     path: /etc/nginx/ssl
     state: directory
-    mode: "0755"
+    mode: '0755'
 
 - name: Generate self-signed TLS certificate
   ansible.builtin.command: >
@@ -90,7 +90,7 @@
   ansible.builtin.template:
     src: novnc.conf.j2
     dest: /etc/nginx/sites-available/novnc
-    mode: "0644"
+    mode: '0644'
   notify: Reload nginx
 
 - name: Enable nginx novnc site
@@ -110,10 +110,10 @@
 - name: Allow SSH and HTTPS through UFW
   community.general.ufw:
     rule: allow
-    name: "{{ item }}"
+    name: '{{ item }}'
   loop:
     - OpenSSH
-    - "Nginx Full"
+    - 'Nginx Full'
 
 - name: Enable UFW
   community.general.ufw:
@@ -138,6 +138,6 @@
         -m {{ novnc_letsencrypt_email }}
         --agree-tos
       args:
-        creates: "/etc/letsencrypt/live/{{ novnc_tls_domain }}/fullchain.pem"
+        creates: '/etc/letsencrypt/live/{{ novnc_tls_domain }}/fullchain.pem'
       register: novnc_certbot_out
       changed_when: novnc_certbot_out.rc == 0

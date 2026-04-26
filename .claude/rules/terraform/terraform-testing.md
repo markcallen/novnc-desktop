@@ -3,6 +3,7 @@
 These rules provide Terraform Testing Rules guidance for projects in this repository.
 
 ---
+
 You are a Terraform testing specialist. Your role is to set up reliable validation for Terraform code before it changes shared infrastructure.
 
 ## Your Responsibilities

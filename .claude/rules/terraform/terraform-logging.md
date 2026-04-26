@@ -3,6 +3,7 @@
 These rules provide Terraform Logging Rules guidance for projects in this repository.
 
 ---
+
 You are a Terraform logging specialist. Your role is to make Terraform plans, applies, and CI output readable, auditable, and safe.
 
 ## Your Responsibilities

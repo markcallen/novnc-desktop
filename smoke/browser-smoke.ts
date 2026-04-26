@@ -12,9 +12,9 @@
  *   4. Take a screenshot.
  */
 
-import process from "node:process";
-import { chromium } from "playwright";
-import type { Page } from "playwright";
+import process from 'node:process';
+import { chromium } from 'playwright';
+import type { Page } from 'playwright';
 
 interface Options {
   accessUrl: string;
@@ -35,25 +35,25 @@ function die(message: string): never {
 
 function parseArgs(argv: string[]): Options {
   const options: Options = {
-    accessUrl: "",
-    screenshot: "",
-    ignoreHttpsErrors: "false",
+    accessUrl: '',
+    screenshot: '',
+    ignoreHttpsErrors: 'false'
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
     switch (arg) {
-      case "--access-url":
-        options.accessUrl = argv[index + 1] ?? "";
+      case '--access-url':
+        options.accessUrl = argv[index + 1] ?? '';
         index += 1;
         break;
-      case "--screenshot":
-        options.screenshot = argv[index + 1] ?? "";
+      case '--screenshot':
+        options.screenshot = argv[index + 1] ?? '';
         index += 1;
         break;
-      case "--ignore-https-errors":
-        options.ignoreHttpsErrors = argv[index + 1] ?? "false";
+      case '--ignore-https-errors':
+        options.ignoreHttpsErrors = argv[index + 1] ?? 'false';
         index += 1;
         break;
       default:
@@ -62,30 +62,35 @@ function parseArgs(argv: string[]): Options {
   }
 
   if (!options.accessUrl) {
-    die("--access-url is required (obtain it by running 'desktop-url' on the host)");
+    die(
+      "--access-url is required (obtain it by running 'desktop-url' on the host)"
+    );
   }
   if (!options.screenshot) {
-    die("--screenshot is required");
+    die('--screenshot is required');
   }
 
   return options;
 }
 
 async function waitForCanvasActivity(page: Page): Promise<void> {
-  await page.waitForFunction(() => {
-    const canvas = document.querySelector("canvas");
-    return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
-  }, { timeout: 60000 });
+  await page.waitForFunction(
+    () => {
+      const canvas = document.querySelector('canvas');
+      return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
+    },
+    { timeout: 60000 }
+  );
 
   await page.waitForTimeout(5000);
 
   const activity = await page.evaluate((): CanvasActivity => {
-    const canvas = document.querySelector("canvas");
+    const canvas = document.querySelector('canvas');
     if (!canvas) {
       return { active: false, greenPixels: 0, sampledPixels: 0 };
     }
 
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext('2d');
     if (!context) {
       return { active: false, greenPixels: 0, sampledPixels: 0 };
     }
@@ -115,14 +120,14 @@ async function waitForCanvasActivity(page: Page): Promise<void> {
     return {
       active: greenPixels >= 200,
       greenPixels,
-      sampledPixels,
+      sampledPixels
     };
   });
 
   if (!activity.active) {
     throw new Error(
       `Desktop marker not detected in VNC canvas; ` +
-      `greenPixels=${activity.greenPixels}, sampledPixels=${activity.sampledPixels}`
+        `greenPixels=${activity.greenPixels}, sampledPixels=${activity.sampledPixels}`
     );
   }
 }
@@ -131,8 +136,8 @@ async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
-    ignoreHTTPSErrors: options.ignoreHttpsErrors === "true",
-    viewport: { width: 1440, height: 900 },
+    ignoreHTTPSErrors: options.ignoreHttpsErrors === 'true',
+    viewport: { width: 1440, height: 900 }
   });
   const page = await context.newPage();
 
@@ -141,8 +146,8 @@ async function main(): Promise<void> {
     // the HttpOnly cookie, and redirects to vnc.html?autoconnect=1&resize=remote.
     console.log(`[smoke] Navigating to access URL...`);
     await page.goto(options.accessUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
     });
 
     // After the redirect we should be at vnc.html with autoconnect active.
@@ -150,7 +155,9 @@ async function main(): Promise<void> {
     console.log(`[smoke] Waiting for VNC canvas activity...`);
     await waitForCanvasActivity(page);
 
-    console.log(`[smoke] Canvas active. Saving screenshot to ${options.screenshot}`);
+    console.log(
+      `[smoke] Canvas active. Saving screenshot to ${options.screenshot}`
+    );
     await page.screenshot({ path: options.screenshot, fullPage: true });
     console.log(`[smoke] PASS`);
   } finally {

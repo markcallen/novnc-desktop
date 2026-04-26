@@ -9,7 +9,7 @@
 
 - name: Add Elementary OS PPA
   ansible.builtin.apt_repository:
-    repo: "ppa:elementary-os/stable"
+    repo: 'ppa:elementary-os/stable'
     state: present
     update_cache: true
 
@@ -31,7 +31,7 @@
 
 - name: Mask display manager to prevent it conflicting with VNC
   ansible.builtin.systemd:
-    name: "{{ item }}"
+    name: '{{ item }}'
     masked: true
     daemon_reload: false
   loop:
@@ -45,16 +45,16 @@
 
 - name: Create .vnc directory
   ansible.builtin.file:
-    path: "{{ desktop_vnc_home }}/.vnc"
+    path: '{{ desktop_vnc_home }}/.vnc'
     state: directory
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0700"
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0700'
 
 - name: Deploy Pantheon xstartup
   ansible.builtin.template:
     src: xstartup-elementary.j2
-    dest: "{{ desktop_vnc_home }}/.vnc/xstartup"
-    owner: "{{ vnc_user }}"
-    group: "{{ vnc_user }}"
-    mode: "0755"
+    dest: '{{ desktop_vnc_home }}/.vnc/xstartup'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
