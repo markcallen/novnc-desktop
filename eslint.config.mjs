@@ -15,6 +15,14 @@ export default [
     }
   },
   {
-    ignores: ['node_modules', 'dist', 'playwright-report', 'test-results']
+    ignores: [
+      'node_modules',
+      'dist',
+      'playwright-report',
+      'test-results',
+      '.smoke-artifacts',
+      '.smoke-state',
+      '.smoke-keys'
+    ]
   }
 ];

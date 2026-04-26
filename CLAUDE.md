@@ -8,18 +8,16 @@ Use this section for durable repo-specific facts that agents repeatedly need. Pr
 
 Keep only stable, reviewable metadata here. Do not store secrets, credentials, or ephemeral runtime state.
 
-Suggested facts to record:
-
-- Canonical GitHub repo: `<OWNER/REPO>`
-- Default branch: `<main>`
-- Primary package manager: `<pnpm | npm | yarn | uv | go>`
-- Version-file locations agents should check first: `<.nvmrc, packageManager, pyproject.toml, go.mod, etc.>`
-- Canonical config files: `<paths agents should read before falling back to discovery>`
-- Primary CI workflows: `<workflow filenames>`
-- Primary release/publish workflows: `<workflow filenames>`
-- Preferred build/test/lint/format/coverage commands: `<commands>`
-- Coverage threshold: `<value>`
-- Generated or protected paths agents should avoid editing directly: `<paths>`
+- Canonical GitHub repo: `markcallen/novnc-desktop`
+- Default branch: `main`
+- Primary package manager: `pnpm` (v10, see `packageManager` in `package.json`)
+- Version-file locations: `.nvmrc` (Node v25), `package.json` (`packageManager`)
+- Canonical config files: `ansible.cfg`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc`, `.ansible-lint`, `.yamllint`
+- Primary CI workflows: `.github/workflows/lint.yml`, `.github/workflows/ansible-lint.yml`
+- Primary release/publish workflows: none (private project)
+- Preferred commands: `pnpm run lint`, `pnpm run prettier`, `pnpm test`, `ansible-lint`, `yamllint .`
+- Coverage threshold: N/A (smoke/E2E tests only, no unit test coverage gate)
+- Generated/protected paths (do not edit): `.smoke-state/`, `.smoke-artifacts/`, `.smoke-keys/`, `pnpm-lock.yaml`, `node_modules/`
 
 Update this section when those facts change. If live runtime state is required, discover it separately instead of treating it as a durable repo fact.
 
