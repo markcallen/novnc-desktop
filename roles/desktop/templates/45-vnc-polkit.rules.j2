@@ -1,0 +1,44 @@
+// Allow the VNC session user to perform a limited set of routine
+// desktop polkit-gated actions without authentication. Headless VNC
+// sessions have no active login session that polkit can authenticate
+// against, causing spurious password prompts for common desktop
+// operations (color management, package info, etc.).
+// Access is intentionally restricted to a small allowlist rather than
+// granting blanket authorization for all polkit actions.
+var allowedActions = {
+    // Color management (colord)
+    "org.freedesktop.color-manager.create-device": true,
+    "org.freedesktop.color-manager.create-profile": true,
+    "org.freedesktop.color-manager.delete-device": true,
+    "org.freedesktop.color-manager.delete-profile": true,
+    "org.freedesktop.color-manager.modify-device": true,
+    "org.freedesktop.color-manager.modify-profile": true,
+    // PackageKit — software information refresh and updates
+    "org.freedesktop.packagekit.refresh-cache": true,
+    "org.freedesktop.packagekit.system-update": true,
+    "org.freedesktop.packagekit.system-sources-configure": true,
+    "org.freedesktop.packagekit.system-sources-refresh": true,
+    "org.freedesktop.packagekit.package-install": true,
+    "org.freedesktop.packagekit.package-remove": true,
+    "org.freedesktop.packagekit.package-update": true,
+    // Flatpak — Elementary AppCenter runs system-wide flatpak operations at startup
+    "org.freedesktop.Flatpak.appstream-update": true,
+    "org.freedesktop.Flatpak.app-install": true,
+    "org.freedesktop.Flatpak.app-update": true,
+    "org.freedesktop.Flatpak.app-uninstall": true,
+    "org.freedesktop.Flatpak.configure": true,
+    "org.freedesktop.Flatpak.configure-remote": true,
+    "org.freedesktop.Flatpak.install-bundle": true,
+    "org.freedesktop.Flatpak.metadata-update": true,
+    "org.freedesktop.Flatpak.modify-repo": true,
+    "org.freedesktop.Flatpak.runtime-install": true,
+    "org.freedesktop.Flatpak.runtime-uninstall": true,
+    "org.freedesktop.Flatpak.runtime-update": true,
+    "org.freedesktop.Flatpak.update-remote": true
+};
+
+polkit.addRule(function(action, subject) {
+    if (subject.user === "{{ vnc_user }}" && allowedActions[action.id] === true) {
+        return polkit.Result.YES;
+    }
+});

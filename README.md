@@ -117,7 +117,7 @@ Key variables:
 | `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition     |
 | `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification |
 
-After provisioning, SSH in and run `desktop-url` to get a signed HTTPS URL for the desktop.
+After provisioning, SSH in and run `novnc-desktop-url` to get a signed HTTPS URL for the desktop.
 
 ## License
 

@@ -6,6 +6,11 @@ export XDG_SESSION_DESKTOP=pantheon
 export XDG_SESSION_TYPE=x11
 
 dbus-launch --exit-with-session sh -lc "
+  # Unlock GNOME Keyring with an empty password so Chrome and other apps
+  # that use libsecret do not prompt for a keyring password in VNC sessions.
+  eval \$(echo '' | gnome-keyring-daemon --unlock --components=secrets,pkcs11,ssh 2>/dev/null)
+  export GNOME_KEYRING_CONTROL SSH_AUTH_SOCK
+
   # Launch gala before gnome-session. The pantheon-vnc session file omits gala
   # from RequiredComponents so gnome-session will not time it out; gala just
   # needs to be running on the display before the rest of the shell starts.

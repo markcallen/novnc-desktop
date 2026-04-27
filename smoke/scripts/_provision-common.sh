@@ -58,7 +58,7 @@ DESKTOP_URL_OUTPUT=$(
     -o StrictHostKeyChecking=no \
     -i "$SSH_KEY_PATH" \
     "$VNC_USER@$PUBLIC_IP" \
-    desktop-url
+    novnc-desktop-url
 )
 ACCESS_URL=$(echo "$DESKTOP_URL_OUTPUT" | awk '/Desktop URL/{print $NF}')
 
@@ -86,7 +86,9 @@ EOF
 
 echo ""
 echo "[provision:$DESKTOP_TYPE] State saved to $STATE_FILE"
-echo "[provision:$DESKTOP_TYPE] Access URL: $ACCESS_URL"
+echo ""
+echo "  Desktop URL : $ACCESS_URL"
+echo "  SSH         : ssh -i $SSH_KEY_PATH $VNC_USER@$PUBLIC_IP"
 echo ""
 echo "Run 'pnpm test' to execute the smoke tests."
 echo "Run 'pnpm infra:down' when you are done to destroy the instance."
