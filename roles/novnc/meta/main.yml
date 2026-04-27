@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: novnc
+  author: markcallen
+  description: Installs and configures noVNC to serve the VNC session over a WebSocket.
+  license: MIT
+  version: 0.1.0
+  min_ansible_version: '2.13'
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+  galaxy_tags:
+    - novnc
+    - vnc
+    - desktop
+    - websocket
+
+dependencies: []

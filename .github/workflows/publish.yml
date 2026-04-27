@@ -79,11 +79,18 @@ jobs:
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
+      - name: Update Ansible role meta versions
+        run: |
+          VERSION="${{ steps.semver.outputs.version }}"
+          for meta in roles/*/meta/main.yml; do
+            sed -i "s/^  version: .*/  version: ${VERSION}/" "$meta"
+          done
+
       - name: Commit version bump and tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json
+          git add package.json roles/*/meta/main.yml
           git diff --staged --quiet && echo "Nothing to commit" && exit 0
           git commit -m "chore(release): bump version to ${{ steps.semver.outputs.version }} [skip ci]"
           git tag "v${{ steps.semver.outputs.version }}"

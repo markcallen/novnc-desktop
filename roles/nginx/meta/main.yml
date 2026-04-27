@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: nginx
+  author: markcallen
+  description: Configures nginx as an HTTPS reverse proxy in front of noVNC.
+  license: MIT
+  version: 0.1.0
+  min_ansible_version: '2.13'
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+  galaxy_tags:
+    - nginx
+    - https
+    - proxy
+    - novnc
+
+dependencies: []
