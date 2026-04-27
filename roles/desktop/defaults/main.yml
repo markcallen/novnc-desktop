@@ -1,6 +1,6 @@
 ---
 # Desktop environment to install.
-# Options: openbox (default), elementary, deepin
+# Options: openbox (default), elementary
 desktop_type: openbox
 
 # User that owns the desktop session.

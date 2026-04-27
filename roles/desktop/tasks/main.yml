@@ -3,8 +3,8 @@
 
 - name: Fail on unsupported desktop_type
   ansible.builtin.fail:
-    msg: "desktop_type '{{ desktop_type }}' is not supported. Choose: openbox, elementary, deepin"
-  when: desktop_type not in ['openbox', 'elementary', 'deepin']
+    msg: "desktop_type '{{ desktop_type }}' is not supported. Choose: openbox, elementary"
+  when: desktop_type not in ['openbox', 'elementary']
 
 - name: Fail on non-x86_64 host
   ansible.builtin.fail:

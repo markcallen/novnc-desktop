@@ -60,7 +60,7 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-1.1 | Running `ansible-playbook site.yml` on a clean Ubuntu 24.04 host completes without error and leaves the desktop reachable over HTTPS. |
 | FR-1.2 | The playbook is idempotent. Re-running it on an already-provisioned host makes no disruptive changes.                                 |
-| FR-1.3 | The `desktop_type` variable selects the desktop environment. Accepted values: `openbox` (default), `elementary`, `deepin`.            |
+| FR-1.3 | The `desktop_type` variable selects the desktop environment. Accepted values: `openbox` (default), `elementary`.                      |
 | FR-1.4 | An unsupported `desktop_type` value causes the playbook to fail with a clear error message before making any changes.                 |
 
 ### FR-2 — Access security
@@ -99,8 +99,7 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-5.1 | **Openbox**: installs `openbox`, `tint2`, and `xterm`. Fully supported on Ubuntu 24.04 from main repos.                                                                                                           |
 | FR-5.2 | **Elementary (Pantheon)**: installs from `ppa:elementary-os/stable`. Treated as best-effort; if the PPA does not support the host's Ubuntu release the task warns and continues rather than failing the playbook. |
-| FR-5.3 | **Deepin**: installs `deepin-desktop-environment` from the Ubuntu universe repository. Treated as best-effort with the same warn-and-continue behaviour as FR-5.2.                                                |
-| FR-5.4 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                         |
+| FR-5.3 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                         |
 
 ### FR-6 — `novnc-auth` service
 
@@ -150,7 +149,7 @@ Nginx
   │                 TigerVNC :5901
   │                      │  X display :1
   │                      ▼
-  │                 Desktop session (openbox / pantheon / deepin)
+  │                 Desktop session (openbox / pantheon)
   │
   └── POST /generate  blocked (deny all)
 
@@ -176,7 +175,7 @@ SSH user
 
 | Variable                    | Default                            | Description                                                     |
 | --------------------------- | ---------------------------------- | --------------------------------------------------------------- |
-| `desktop_type`              | `openbox`                          | Desktop environment: `openbox`, `elementary`, `deepin`          |
+| `desktop_type`              | `openbox`                          | Desktop environment: `openbox`, `elementary`                    |
 | `vnc_user`                  | `ubuntu`                           | OS user that owns the desktop session                           |
 | `vnc_display`               | `1`                                | X display number                                                |
 | `vnc_geometry`              | `1280x720`                         | Screen resolution                                               |

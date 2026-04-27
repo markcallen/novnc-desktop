@@ -4,7 +4,7 @@
 # Sourced by provision-*.sh scripts. Not intended to be run directly.
 #
 # Expected variables set by the caller before sourcing:
-#   DESKTOP_TYPE   — desktop_type value passed to Ansible (openbox, elementary, deepin)
+#   DESKTOP_TYPE   — desktop_type value passed to Ansible (openbox, elementary)
 #
 # Optional environment variables:
 #   VNC_USER       — SSH username on the EC2 instance (default: ubuntu)

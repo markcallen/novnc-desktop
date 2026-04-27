@@ -3,16 +3,6 @@ variable "aws_region" {
   type        = string
 }
 
-variable "ubuntu_version" {
-  description = "Ubuntu version for the smoke test AMI (e.g. 24.04 or 22.04)."
-  type        = string
-  default     = "24.04"
-  validation {
-    condition     = contains(["24.04", "22.04"], var.ubuntu_version)
-    error_message = "ubuntu_version must be 24.04 or 22.04."
-  }
-}
-
 variable "stack_name" {
   description = "Logical stack name for the smoke test workspace."
   type        = string

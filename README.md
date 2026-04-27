@@ -110,7 +110,7 @@ Key variables:
 
 | Variable                    | Default    | Description                                            |
 | --------------------------- | ---------- | ------------------------------------------------------ |
-| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`, `deepin` |
+| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`           |
 | `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session                  |
 | `vnc_geometry`              | `1280x720` | Screen resolution                                      |
 | `default_browser`           | `firefox`  | Browser: `firefox` or `chrome`                         |

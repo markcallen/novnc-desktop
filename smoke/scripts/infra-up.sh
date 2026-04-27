@@ -9,7 +9,6 @@
 #
 #   bash smoke/scripts/provision-openbox.sh
 #   bash smoke/scripts/provision-elementary.sh
-#   bash smoke/scripts/provision-deepin.sh
 #
 # No SSH key configuration needed. Terraform generates a dedicated key pair,
 # writes the private key to .smoke-keys/smoke.pem, and registers the public
@@ -94,4 +93,3 @@ echo ""
 echo "Next: run a provision script to install a desktop environment:"
 echo "  bash smoke/scripts/provision-openbox.sh"
 echo "  bash smoke/scripts/provision-elementary.sh"
-echo "  bash smoke/scripts/provision-deepin.sh"
