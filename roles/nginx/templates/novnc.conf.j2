@@ -58,7 +58,7 @@ server {
     auth_request /_auth/verify;
 
     # On auth failure redirect to the access endpoint.
-    # The user will need a fresh desktop-url link.
+    # The user will need a fresh novnc-desktop-url link.
     error_page 401 = @unauthorized;
 
     proxy_pass http://127.0.0.1:6080/;

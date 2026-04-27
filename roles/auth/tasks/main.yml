@@ -61,10 +61,10 @@
     - Reload systemd
     - Restart novnc-auth
 
-- name: Install desktop-url command
+- name: Install novnc-desktop-url command
   ansible.builtin.copy:
-    src: desktop-url
-    dest: /usr/local/bin/desktop-url
+    src: novnc-desktop-url
+    dest: /usr/local/bin/novnc-desktop-url
     owner: root
     group: root
     mode: '0755'

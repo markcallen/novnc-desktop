@@ -1,0 +1,11 @@
+// Allow the VNC session user to perform any polkit-gated action without
+// authentication. Headless VNC sessions have no active login session that
+// polkit can authenticate against, causing spurious password prompts for
+// routine desktop operations (color management, package info, etc.).
+// Access to the desktop is already gated by the noVNC token, so
+// re-authenticating inside the session provides no additional security.
+polkit.addRule(function(action, subject) {
+    if (subject.user === "{{ vnc_user }}") {
+        return polkit.Result.YES;
+    }
+});
