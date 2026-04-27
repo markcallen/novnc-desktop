@@ -2,6 +2,7 @@
 
 [![Lint](https://github.com/markcallen/novnc-desktop/actions/workflows/lint.yml/badge.svg)](https://github.com/markcallen/novnc-desktop/actions/workflows/lint.yml)
 [![Ansible Lint](https://github.com/markcallen/novnc-desktop/actions/workflows/ansible-lint.yml/badge.svg)](https://github.com/markcallen/novnc-desktop/actions/workflows/ansible-lint.yml)
+[![Publish](https://github.com/markcallen/novnc-desktop/actions/workflows/publish.yml/badge.svg)](https://github.com/markcallen/novnc-desktop/actions/workflows/publish.yml)
 [![License](https://img.shields.io/github/license/markcallen/novnc-desktop)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/markcallen/novnc-desktop)](https://github.com/markcallen/novnc-desktop/releases)
 

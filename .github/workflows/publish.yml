@@ -1,0 +1,108 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options: [patch, minor, major]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bump_and_tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.semver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Prettier check
+        run: pnpm run prettier
+
+      - name: Ansible lint
+        uses: ansible/ansible-lint-action@v25
+        with:
+          path: .
+
+      - name: Get previous tag
+        id: prev_tag
+        uses: WyriHaximus/github-action-get-previous-tag@v2
+
+      - name: Compute next versions
+        id: next_semver
+        uses: WyriHaximus/github-action-next-semvers@v1
+        with:
+          version: ${{ steps.prev_tag.outputs.tag }}
+
+      - name: Select version
+        id: semver
+        run: |
+          case "${{ inputs.release_type }}" in
+            patch) echo "version=${{ steps.next_semver.outputs.patch }}" >> "$GITHUB_OUTPUT" ;;
+            minor) echo "version=${{ steps.next_semver.outputs.minor }}" >> "$GITHUB_OUTPUT" ;;
+            major) echo "version=${{ steps.next_semver.outputs.major }}" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Update package.json version
+        run: |
+          VERSION="${{ steps.semver.outputs.version }}"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '${VERSION}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+      - name: Commit version bump and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git diff --staged --quiet && echo "Nothing to commit" && exit 0
+          git commit -m "chore(release): bump version to ${{ steps.semver.outputs.version }} [skip ci]"
+          git tag "v${{ steps.semver.outputs.version }}"
+          git push origin HEAD --tags
+
+  release:
+    needs: bump_and_tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/v${{ needs.bump_and_tag.outputs.version }}
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.bump_and_tag.outputs.version }}
+          generate_release_notes: true
+          name: v${{ needs.bump_and_tag.outputs.version }}
