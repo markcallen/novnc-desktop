@@ -1,0 +1,9 @@
+[GNOME Session]
+Name=Pantheon (VNC)
+# gala is removed from RequiredComponents and launched manually in xstartup
+# before gnome-session starts. Under VNC there is no GPU/DRI3 so gala takes
+# longer than the 10-second registration window to initialise; keeping it here
+# causes gnome-session-failed to appear and eventually crash the session.
+RequiredComponents=org.gnome.SettingsDaemon.A11ySettings;org.gnome.SettingsDaemon.Color;org.gnome.SettingsDaemon.Datetime;org.gnome.SettingsDaemon.Housekeeping;org.gnome.SettingsDaemon.Keyboard;org.gnome.SettingsDaemon.MediaKeys;org.gnome.SettingsDaemon.Power;org.gnome.SettingsDaemon.PrintNotifications;org.gnome.SettingsDaemon.Rfkill;org.gnome.SettingsDaemon.ScreensaverProxy;org.gnome.SettingsDaemon.Sharing;org.gnome.SettingsDaemon.Smartcard;org.gnome.SettingsDaemon.Sound;org.gnome.SettingsDaemon.UsbProtection;org.gnome.SettingsDaemon.Wacom;org.gnome.SettingsDaemon.XSettings
+FallbackSession=ubuntu
+DesktopName=Pantheon

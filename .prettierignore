@@ -6,3 +6,6 @@ pnpm-lock.yaml
 .smoke-artifacts
 .smoke-state
 .smoke-keys
+.codex
+.claude
+.ballast

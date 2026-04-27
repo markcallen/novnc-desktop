@@ -5,4 +5,15 @@ export XDG_CURRENT_DESKTOP=Pantheon
 export XDG_SESSION_DESKTOP=pantheon
 export XDG_SESSION_TYPE=x11
 
-exec dbus-launch --exit-with-session gnome-session --session=pantheon
+dbus-launch --exit-with-session sh -lc "
+  # Launch gala before gnome-session. The pantheon-vnc session file omits gala
+  # from RequiredComponents so gnome-session will not time it out; gala just
+  # needs to be running on the display before the rest of the shell starts.
+  gala --replace &
+
+{% if smoke_test_marker_enabled | bool %}
+  xterm -title SMOKE_READY -geometry 44x8+20+20 -bg '#00ff66' -fg black -e sh -lc \"printf 'SMOKE READY\n'; exec sh\" &
+{% endif %}
+
+  exec gnome-session --session=pantheon-vnc
+"

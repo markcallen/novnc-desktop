@@ -55,4 +55,3 @@ Created by Ballast. Do not edit this section.
 Read and use these skill files in `.codex/rules/` when they are relevant:
 
 - `.codex/rules/github-health-check.md` — run a comprehensive GitHub repository health check covering CI status, code quality, branch hygiene, and repo configuration
-
