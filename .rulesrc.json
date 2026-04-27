@@ -9,14 +9,16 @@
     "git-hooks",
     "linting",
     "logging",
-    "testing"
+    "testing",
+    "tasks"
   ],
   "skills": ["github-health-check"],
-  "ballastVersion": "5.7.4",
+  "ballastVersion": "5.9.0",
   "languages": ["ansible", "terraform", "typescript"],
   "paths": {
     "ansible": ["."],
     "terraform": ["smoke/ec2"],
     "typescript": ["."]
-  }
+  },
+  "taskSystem": "github"
 }
