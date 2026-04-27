@@ -79,11 +79,11 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 
 | ID     | Requirement                                                                                                                                                                       |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-3.1 | `novnc-desktop-url` is installed to `/usr/local/bin/novnc-desktop-url` and is executable by any user on the host.                                                                             |
-| FR-3.2 | Running `novnc-desktop-url` prints a complete HTTPS URL and its expiry time to stdout.                                                                                                  |
+| FR-3.1 | `novnc-desktop-url` is installed to `/usr/local/bin/novnc-desktop-url` and is executable by any user on the host.                                                                 |
+| FR-3.2 | Running `novnc-desktop-url` prints a complete HTTPS URL and its expiry time to stdout.                                                                                            |
 | FR-3.3 | The URL, when opened in a browser, authenticates the session, sets the access cookie, and redirects to `vnc.html?autoconnect=1&resize=remote` without any additional user action. |
 | FR-3.4 | The default token TTL is 8 hours. It is configurable via the `auth_token_ttl_seconds` variable.                                                                                   |
-| FR-3.5 | If the `novnc-auth` service is not running, `novnc-desktop-url` exits with a non-zero status and a human-readable error message.                                                        |
+| FR-3.5 | If the `novnc-auth` service is not running, `novnc-desktop-url` exits with a non-zero status and a human-readable error message.                                                  |
 
 ### FR-4 — TLS certificates
 
