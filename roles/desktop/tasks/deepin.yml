@@ -1,30 +1,38 @@
 ---
-# Deepin Desktop Environment (from Ubuntu universe repos)
-# Available as deepin-desktop-environment on Ubuntu 24.04.
+# Deepin Desktop Environment — requires Ubuntu 22.04 (Jammy).
+#
+# startdde and dde-dconfig-daemon work correctly on Jammy. This role installs
+# the full DDE via the UbuntuDDE PPA and launches it with startdde over VNC.
 
-- name: Enable universe repository
+- name: Assert Ubuntu 22.04
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Ubuntu'
+      - ansible_distribution_version is version('22.04', '==')
+    fail_msg: >-
+      Deepin requires Ubuntu 22.04 (Jammy). Detected
+      {{ ansible_distribution }} {{ ansible_distribution_version }}.
+      Provision the host with infra-up-ubuntu22.sh instead of infra-up.sh.
+
+- name: Install software-properties-common for PPA support
+  ansible.builtin.apt:
+    name: software-properties-common
+    state: present
+
+- name: Add UbuntuDDE PPA
   ansible.builtin.apt_repository:
-    repo: 'deb http://archive.ubuntu.com/ubuntu {{ ansible_distribution_release }} universe'
+    repo: 'ppa:ubuntudde-dev/stable'
     state: present
     update_cache: true
 
-- name: Install Deepin desktop packages
+- name: Install Deepin desktop environment
   ansible.builtin.apt:
     name:
-      - deepin-desktop-environment
+      - dde
+      - dde-kwin
     state: present
-  register: deepin_install
-  failed_when: false
 
-- name: Warn if Deepin install failed (best-effort)
-  ansible.builtin.debug:
-    msg: >-
-      WARNING: deepin-desktop-environment could not be installed.
-      The package may not be available for this Ubuntu release in universe.
-      Manual installation may be required.
-  when: deepin_install.failed | bool
-
-- name: Mask display manager to prevent it conflicting with VNC
+- name: Mask display managers and file indexer to prevent conflict with VNC
   ansible.builtin.systemd:
     name: '{{ item }}'
     masked: true

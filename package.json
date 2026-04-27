@@ -7,6 +7,7 @@
   "description": "Playwright smoke test suite for novnc-desktop",
   "scripts": {
     "infra:up": "bash smoke/scripts/infra-up.sh",
+    "infra:up:ubuntu22": "bash smoke/scripts/infra-up-ubuntu22.sh",
     "infra:status": "bash smoke/scripts/infra-status.sh",
     "infra:down": "bash smoke/scripts/infra-down.sh",
     "provision:openbox": "bash smoke/scripts/provision-openbox.sh",

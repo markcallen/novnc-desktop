@@ -51,13 +51,21 @@ data "aws_ec2_instance_type_offerings" "available" {
   }
 }
 
+locals {
+  ubuntu_ami_patterns = {
+    "24.04" = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
+    "22.04" = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  }
+  ubuntu_ami_pattern = local.ubuntu_ami_patterns[var.ubuntu_version]
+}
+
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"]
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+    values = [local.ubuntu_ami_pattern]
   }
 
   filter {
