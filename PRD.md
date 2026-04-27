@@ -180,7 +180,6 @@ SSH user
 | `vnc_display`               | `1`                                | X display number                                                |
 | `vnc_geometry`              | `1280x720`                         | Screen resolution                                               |
 | `vnc_depth`                 | `24`                               | Colour depth                                                    |
-| `default_browser`           | `firefox`                          | Browser installed alongside the desktop: `firefox`, `chrome`    |
 | `auth_token_ttl_seconds`    | `28800`                            | Token lifetime (8 hours)                                        |
 | `novnc_base_url`            | `https://{{ inventory_hostname }}` | Base URL embedded in generated access URLs                      |
 | `auth_service_port`         | `8898`                             | Port the `novnc-auth` service listens on (localhost only)       |

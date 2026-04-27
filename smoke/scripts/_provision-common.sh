@@ -11,18 +11,22 @@
 
 set -euo pipefail
 
-VNC_USER="${VNC_USER:-ubuntu}"
-
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_DIR="$REPO_ROOT/.smoke-state"
 STATE_FILE="$STATE_DIR/state.json"
-SSH_KEY_PATH="$REPO_ROOT/.smoke-keys/smoke.pem"
 
 if [[ ! -f "$STATE_FILE" ]]; then
   echo "ERROR: No infrastructure state found at $STATE_FILE." >&2
   echo "Run 'pnpm infra:up' first to provision the EC2 instance." >&2
   exit 1
 fi
+
+# Load credentials from state file; allow environment variable overrides.
+_STATE_VNC_USER=$(jq -r '.vncUser // "ubuntu"' "$STATE_FILE")
+_STATE_SSH_KEY_PATH=$(jq -r '.sshKeyPath // ""' "$STATE_FILE")
+
+VNC_USER="${VNC_USER:-$_STATE_VNC_USER}"
+SSH_KEY_PATH="${SSH_KEY_PATH:-${_STATE_SSH_KEY_PATH:-$REPO_ROOT/.smoke-keys/smoke.pem}}"
 
 PUBLIC_IP=$(jq -r '.publicIp' "$STATE_FILE")
 

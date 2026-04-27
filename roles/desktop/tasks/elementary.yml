@@ -29,6 +29,15 @@
       Falling back may require manual intervention.
   when: elementary_install.failed | bool
 
+- name: Ensure gnome-session sessions directory exists
+  ansible.builtin.file:
+    path: /usr/share/gnome-session/sessions
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: not (elementary_install.failed | bool)
+
 - name: Install VNC-compatible Pantheon session file
   ansible.builtin.template:
     src: pantheon-vnc.session.j2
@@ -36,6 +45,7 @@
     owner: root
     group: root
     mode: '0644'
+  when: not (elementary_install.failed | bool)
 
 - name: Mask display manager to prevent it conflicting with VNC
   ansible.builtin.systemd:
