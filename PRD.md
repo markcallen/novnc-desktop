@@ -23,7 +23,7 @@ There is no lightweight, self-hosted, provider-agnostic solution that gives a de
 
 1. A developer can provision a secure remote desktop on any Ubuntu 24.04 host by running a single Ansible playbook.
 2. Access is token-secured over HTTPS. No VNC password is used. No VNC client is needed.
-3. After provisioning, the developer SSHs in and runs `desktop-url` to get a signed URL they can paste into any browser.
+3. After provisioning, the developer SSHs in and runs `novnc-desktop-url` to get a signed URL they can paste into any browser.
 4. Self-signed TLS certificates work out of the box. Let's Encrypt is available as an opt-in upgrade when a public domain is configured.
 5. The desktop environment is configurable: Openbox (default, lightweight), Pantheon (Elementary), or Deepin.
 6. The role is usable standalone and as a component of larger automation stacks (specifically `ai-agent-desktop`, which relies on this role for its nginx access layer).
@@ -75,15 +75,15 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | FR-2.6 | The token-generation endpoint (`POST /generate`) is blocked by Nginx for all external requests. It is reachable only from `127.0.0.1`.                                                                      |
 | FR-2.7 | The access cookie is set `HttpOnly`, `Secure`, `SameSite=Lax`, scoped to `Path=/`, with `Max-Age` matching the token TTL.                                                                                   |
 
-### FR-3 — `desktop-url` command
+### FR-3 — `novnc-desktop-url` command
 
 | ID     | Requirement                                                                                                                                                                       |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-3.1 | `desktop-url` is installed to `/usr/local/bin/desktop-url` and is executable by any user on the host.                                                                             |
-| FR-3.2 | Running `desktop-url` prints a complete HTTPS URL and its expiry time to stdout.                                                                                                  |
+| FR-3.1 | `novnc-desktop-url` is installed to `/usr/local/bin/novnc-desktop-url` and is executable by any user on the host.                                                                             |
+| FR-3.2 | Running `novnc-desktop-url` prints a complete HTTPS URL and its expiry time to stdout.                                                                                                  |
 | FR-3.3 | The URL, when opened in a browser, authenticates the session, sets the access cookie, and redirects to `vnc.html?autoconnect=1&resize=remote` without any additional user action. |
 | FR-3.4 | The default token TTL is 8 hours. It is configurable via the `auth_token_ttl_seconds` variable.                                                                                   |
-| FR-3.5 | If the `novnc-auth` service is not running, `desktop-url` exits with a non-zero status and a human-readable error message.                                                        |
+| FR-3.5 | If the `novnc-auth` service is not running, `novnc-desktop-url` exits with a non-zero status and a human-readable error message.                                                        |
 
 ### FR-4 — TLS certificates
 
@@ -154,7 +154,7 @@ Nginx
   └── POST /generate  blocked (deny all)
 
 SSH user
-  └── desktop-url  ──► curl POST http://127.0.0.1:8898/generate
+  └── novnc-desktop-url  ──► curl POST http://127.0.0.1:8898/generate
                         returns { url, expires_at }
 ```
 
@@ -199,7 +199,7 @@ SSH user
 - [x] TigerVNC with `SecurityTypes=None`
 - [x] `novnc-auth` Python service (HMAC-SHA256 tokens, stdlib only)
 - [x] Nginx `auth_request` integration
-- [x] `desktop-url` CLI command
+- [x] `novnc-desktop-url` CLI command
 - [x] Self-signed TLS certificate generation
 - [x] Let's Encrypt opt-in via certbot
 - [x] UFW firewall configuration
@@ -215,7 +215,7 @@ SSH user
 
 ### Phase 3 — Hardening and developer experience
 
-- [ ] Token rotation: `desktop-url --renew` invalidates prior cookie and issues a fresh token
+- [ ] Token rotation: `novnc-desktop-url --renew` invalidates prior cookie and issues a fresh token
 - [ ] Configurable session idle timeout (nginx `proxy_read_timeout` + auth TTL alignment)
 - [ ] Health check endpoint (`GET /health`) on `novnc-auth` for monitoring
 - [ ] Ansible Galaxy publication as a standalone role (`markcallen.novnc_desktop`)

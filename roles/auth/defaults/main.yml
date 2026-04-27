@@ -2,7 +2,7 @@
 # Token lifetime in seconds. Default: 8 hours.
 auth_token_ttl_seconds: 28800
 
-# Base URL used when building the access URL returned by desktop-url.
+# Base URL used when building the access URL returned by novnc-desktop-url.
 # Should match the public HTTPS address of this host.
 novnc_base_url: 'https://{{ inventory_hostname }}'
 
