@@ -23,13 +23,12 @@ updates:
           - 'globals'
           - 'typescript-eslint'
           - 'husky'
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: ansible
     directory: /
     schedule:
       interval: weekly

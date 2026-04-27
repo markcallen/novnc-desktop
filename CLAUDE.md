@@ -55,4 +55,3 @@ Created by Ballast. Do not edit this section.
 Read and use these skill files in `.claude/skills/` when they are relevant:
 
 - `.claude/skills/github-health-check.skill` — run a comprehensive GitHub repository health check covering CI status, code quality, branch hygiene, and repo configuration
-
