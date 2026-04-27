@@ -33,11 +33,6 @@ updates:
     schedule:
       interval: weekly
 
-  - package-ecosystem: ansible
-    directory: /
-    schedule:
-      interval: weekly
-
   - package-ecosystem: terraform
     directory: /smoke/ec2
     schedule:
