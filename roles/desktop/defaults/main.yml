@@ -13,13 +13,6 @@ vnc_depth: 24
 # Number of virtual desktops (openbox only).
 openbox_desktops: 1
 
-# Browser to install alongside the desktop.
-# Options: firefox, chrome
-default_browser: firefox
-
-# Firefox profile list (required by staticdev.firefox role).
-firefox_profiles: []
-
 # Set to true during smoke tests to paint a bright-green xterm on screen
 # so the Playwright canvas checker can verify the desktop is rendering.
 smoke_test_marker_enabled: false

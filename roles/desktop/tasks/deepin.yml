@@ -19,10 +19,10 @@
 - name: Warn if Deepin install failed (best-effort)
   ansible.builtin.debug:
     msg: >-
-      WARNING: deepin-desktop-environment could not be installed
-      (rc={{ deepin_install.rc }}). The package may not be available for this
-      Ubuntu release in universe. Manual installation may be required.
-  when: deepin_install.rc != 0
+      WARNING: deepin-desktop-environment could not be installed.
+      The package may not be available for this Ubuntu release in universe.
+      Manual installation may be required.
+  when: deepin_install.failed | bool
 
 - name: Mask display manager to prevent it conflicting with VNC
   ansible.builtin.systemd:

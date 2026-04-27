@@ -6,15 +6,12 @@
     msg: "desktop_type '{{ desktop_type }}' is not supported. Choose: openbox, elementary, deepin"
   when: desktop_type not in ['openbox', 'elementary', 'deepin']
 
-- name: Fail when Chrome is requested on a non-x86_64 host
+- name: Fail on non-x86_64 host
   ansible.builtin.fail:
     msg: >-
-      default_browser is set to chrome, but Google Chrome is only available for
-      x86_64 hosts. Use default_browser=firefox or override the browser for this
-      architecture.
-  when:
-    - default_browser == "chrome"
-    - ansible_architecture != "x86_64"
+      Google Chrome is only available for x86_64 hosts.
+      This host is {{ ansible_architecture }}.
+  when: ansible_architecture != "x86_64"
 
 - name: Install base desktop packages
   ansible.builtin.apt:
@@ -25,6 +22,7 @@
       - xterm
       - fonts-liberation
       - ca-certificates
+      - curl
       - gpg
     state: present
 
@@ -33,9 +31,7 @@
     url: https://dl.google.com/linux/linux_signing_key.pub
     dest: /usr/share/keyrings/googlechrome.pub
     mode: '0644'
-  when:
-    - default_browser == "chrome"
-    - ansible_architecture == "x86_64"
+  become: true
 
 - name: Configure Google Chrome apt repository
   ansible.builtin.apt_repository:
@@ -43,35 +39,16 @@
     filename: google-chrome
     state: present
     update_cache: true
-  when:
-    - default_browser == "chrome"
-    - ansible_architecture == "x86_64"
 
 - name: Install Google Chrome
   ansible.builtin.apt:
     name: google-chrome-stable
     state: present
-  when:
-    - default_browser == "chrome"
-    - ansible_architecture == "x86_64"
 
-- name: Install Firefox
-  ansible.builtin.apt:
-    name: firefox
-    state: present
-  when: default_browser == "firefox"
-
-- name: Set default browser to Chrome
+- name: Set Google Chrome as default browser
   community.general.alternatives:
     name: x-www-browser
     path: /usr/bin/google-chrome-stable
-  when: default_browser == "chrome"
-
-- name: Set default browser to Firefox
-  community.general.alternatives:
-    name: x-www-browser
-    path: /usr/bin/firefox
-  when: default_browser == "firefox"
 
 - name: Warn when VNC session is configured to run as root
   ansible.builtin.debug:

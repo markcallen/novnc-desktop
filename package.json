@@ -8,8 +8,11 @@
   "scripts": {
     "infra:up": "bash smoke/scripts/infra-up.sh",
     "infra:status": "bash smoke/scripts/infra-status.sh",
-    "test": "playwright test",
     "infra:down": "bash smoke/scripts/infra-down.sh",
+    "provision:openbox": "bash smoke/scripts/provision-openbox.sh",
+    "provision:elementary": "bash smoke/scripts/provision-elementary.sh",
+    "provision:deepin": "bash smoke/scripts/provision-deepin.sh",
+    "test": "playwright test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prettier": "prettier . --check",

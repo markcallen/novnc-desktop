@@ -24,10 +24,18 @@
 - name: Warn if Pantheon install failed (best-effort)
   ansible.builtin.debug:
     msg: >-
-      WARNING: elementary-desktop could not be installed from the PPA
-      (rc={{ elementary_install.rc }}). The PPA may not yet support this Ubuntu
-      release. Falling back may require manual intervention.
-  when: elementary_install.rc != 0
+      WARNING: elementary-desktop could not be installed from the PPA.
+      The PPA may not yet support this Ubuntu release.
+      Falling back may require manual intervention.
+  when: elementary_install.failed | bool
+
+- name: Install VNC-compatible Pantheon session file
+  ansible.builtin.template:
+    src: pantheon-vnc.session.j2
+    dest: /usr/share/gnome-session/sessions/pantheon-vnc.session
+    owner: root
+    group: root
+    mode: '0644'
 
 - name: Mask display manager to prevent it conflicting with VNC
   ansible.builtin.systemd:

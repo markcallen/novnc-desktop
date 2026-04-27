@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
-# infra-up.sh — provision the EC2 smoke test server and save connection state.
+# infra-up.sh — provision the EC2 smoke test server with Terraform.
 #
 # Usage:
 #   pnpm infra:up
+#
+# This script only handles infrastructure provisioning (Terraform + SSH readiness).
+# To install a desktop environment, run one of the provision scripts afterwards:
+#
+#   bash smoke/scripts/provision-openbox.sh
+#   bash smoke/scripts/provision-elementary.sh
+#   bash smoke/scripts/provision-deepin.sh
 #
 # No SSH key configuration needed. Terraform generates a dedicated key pair,
 # writes the private key to .smoke-keys/smoke.pem, and registers the public
@@ -70,51 +77,12 @@ while true; do
 done
 
 # ---------------------------------------------------------------------------
-# 3. Ansible Galaxy dependencies
-# ---------------------------------------------------------------------------
-echo "[infra:up] Installing Ansible Galaxy requirements..."
-cd "$REPO_ROOT"
-ansible-galaxy install -r requirements.yml --force
-
-# ---------------------------------------------------------------------------
-# 4. Ansible — provision the desktop
-# smoke_test_marker_enabled=true renders the bright-green xterm that the
-# Playwright desktop test looks for on the canvas.
-# ---------------------------------------------------------------------------
-echo "[infra:up] Provisioning with Ansible (this takes ~5-10 min)..."
-ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook site.yml \
-  -i "$PUBLIC_IP," \
-  -u "$VNC_USER" \
-  --private-key "$SSH_KEY_PATH" \
-  -e "smoke_test_marker_enabled=true"
-
-# ---------------------------------------------------------------------------
-# 5. Fetch a time-limited desktop access URL
-# ---------------------------------------------------------------------------
-echo "[infra:up] Fetching desktop access URL..."
-DESKTOP_URL_OUTPUT=$(
-  ssh \
-    -o StrictHostKeyChecking=no \
-    -i "$SSH_KEY_PATH" \
-    "$VNC_USER@$PUBLIC_IP" \
-    desktop-url
-)
-ACCESS_URL=$(echo "$DESKTOP_URL_OUTPUT" | awk '/Desktop URL/{print $NF}')
-
-if [[ -z "$ACCESS_URL" ]]; then
-  echo "[infra:up] ERROR: Could not parse access URL from desktop-url output:" >&2
-  echo "$DESKTOP_URL_OUTPUT" >&2
-  exit 1
-fi
-
-# ---------------------------------------------------------------------------
-# 6. Save state for the test runner
+# 3. Save infrastructure state
 # ---------------------------------------------------------------------------
 cat > "$STATE_FILE" <<EOF
 {
   "publicIp": "$PUBLIC_IP",
   "publicDns": "$PUBLIC_DNS",
-  "accessUrl": "$ACCESS_URL",
   "vncUser": "$VNC_USER",
   "sshKeyPath": "$SSH_KEY_PATH"
 }
@@ -122,7 +90,8 @@ EOF
 
 echo ""
 echo "[infra:up] State saved to $STATE_FILE"
-echo "[infra:up] Access URL: $ACCESS_URL"
 echo ""
-echo "Run 'pnpm test' to execute the smoke tests."
-echo "Run 'pnpm infra:down' when you are done to destroy the instance."
+echo "Next: run a provision script to install a desktop environment:"
+echo "  bash smoke/scripts/provision-openbox.sh"
+echo "  bash smoke/scripts/provision-elementary.sh"
+echo "  bash smoke/scripts/provision-deepin.sh"
