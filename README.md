@@ -108,15 +108,15 @@ ansible-playbook site.yml -i <host>, -u ubuntu --private-key ~/.ssh/key.pem
 
 Key variables:
 
-| Variable                    | Default    | Description                                            |
-| --------------------------- | ---------- | ------------------------------------------------------ |
-| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`           |
-| `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session                  |
-| `vnc_geometry`              | `1280x720` | Screen resolution                                      |
-| `default_browser`           | `firefox`  | Browser: `firefox` or `chrome`                         |
-| `auth_token_ttl_seconds`    | `28800`    | Token lifetime in seconds (default 8 hours)            |
-| `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition          |
-| `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification      |
+| Variable                    | Default    | Description                                       |
+| --------------------------- | ---------- | ------------------------------------------------- |
+| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`      |
+| `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session             |
+| `vnc_geometry`              | `1280x720` | Screen resolution                                 |
+| `default_browser`           | `firefox`  | Browser: `firefox` or `chrome`                    |
+| `auth_token_ttl_seconds`    | `28800`    | Token lifetime in seconds (default 8 hours)       |
+| `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition     |
+| `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification |
 
 After provisioning, SSH in and run `desktop-url` to get a signed HTTPS URL for the desktop.
 

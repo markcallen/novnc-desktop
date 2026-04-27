@@ -14,10 +14,6 @@ updates:
         patterns:
           - 'typescript'
           - '@types/*'
-    ignore:
-      - dependency-name: typescript
-        update-types:
-          - version-update:semver-major
       dev-tooling:
         dependency-type: development
         patterns:
@@ -27,6 +23,10 @@ updates:
           - 'globals'
           - 'typescript-eslint'
           - 'husky'
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
