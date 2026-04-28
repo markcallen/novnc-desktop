@@ -18,6 +18,7 @@
     name:
       - elementary-desktop
       - gnome-keyring
+      - libgl1-mesa-dri
     state: present
   register: elementary_install
   failed_when: false
