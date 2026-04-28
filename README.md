@@ -112,12 +112,18 @@ roles:
     src: https://github.com/markcallen/novnc-desktop
     scm: git
     version: v0.1.1
+
+collections:
+  - name: ansible.utils
+    version: '>=2.0.0'
+  - name: community.general
 ```
 
 Then install and run:
 
 ```sh
 ansible-galaxy install -r requirements.yml
+ansible-galaxy collection install -r requirements.yml
 ansible-playbook playbook.yml -i <host>, -u ubuntu --private-key ~/.ssh/key.pem
 ```
 
