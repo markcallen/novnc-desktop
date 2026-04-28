@@ -10,10 +10,18 @@ updates:
         patterns:
           - '@playwright/test'
           - 'playwright'
+      # @types/node is kept separate so its major version can be pinned to
+      # match .nvmrc (currently v25). Update the ignore rule below whenever
+      # .nvmrc is bumped to a new Node.js major version.
+      node-types:
+        patterns:
+          - '@types/node'
       typescript:
         patterns:
           - 'typescript'
           - '@types/*'
+        exclude-patterns:
+          - '@types/node'
       dev-tooling:
         dependency-type: development
         patterns:
@@ -25,6 +33,11 @@ updates:
           - 'husky'
     ignore:
       - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+      # Pin @types/node to Node.js major 25 (matches .nvmrc).
+      # Update this when .nvmrc is bumped to a new major version.
+      - dependency-name: '@types/node'
         update-types:
           - version-update:semver-major
 

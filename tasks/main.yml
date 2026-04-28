@@ -1,0 +1,35 @@
+---
+# Root task entry point — delegates to each sub-role in order.
+# This file exists so the repo can be installed as a single Galaxy role via:
+#
+#   ansible-galaxy install git+https://github.com/markcallen/novnc-desktop.git,v0.1.1
+#
+# and then referenced in a playbook as role: markcallen.novnc_desktop.
+
+- name: Remove conflicting Google Chrome apt source files
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/google-chrome.list
+    - /etc/apt/sources.list.d/dl_google_com_linux_chrome_deb.list
+
+- name: Run desktop role
+  ansible.builtin.include_role:
+    name: '{{ role_path }}/roles/desktop'
+
+- name: Run vnc role
+  ansible.builtin.include_role:
+    name: '{{ role_path }}/roles/vnc'
+
+- name: Run novnc role
+  ansible.builtin.include_role:
+    name: '{{ role_path }}/roles/novnc'
+
+- name: Run auth role
+  ansible.builtin.include_role:
+    name: '{{ role_path }}/roles/auth'
+
+- name: Run nginx role
+  ansible.builtin.include_role:
+    name: '{{ role_path }}/roles/nginx'
