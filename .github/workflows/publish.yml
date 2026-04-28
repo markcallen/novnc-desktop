@@ -45,10 +45,19 @@ jobs:
       - name: Prettier check
         run: pnpm run prettier
 
-      - name: Ansible lint
-        uses: ansible/ansible-lint-action@v25
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          path: .
+          python-version: '3.12'
+
+      - name: Install ansible-lint
+        run: pip install ansible-lint
+
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Ansible lint
+        run: ansible-lint
 
       - name: Get previous tag
         id: prev_tag
