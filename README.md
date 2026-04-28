@@ -46,6 +46,43 @@ pnpm install
 pnpm exec playwright install chromium
 ```
 
+## Developer setup
+
+If you are contributing to this repo, install the same tools the CI workflows use:
+
+- `nvm` to load the Node version pinned in `.nvmrc`
+- Node.js v25 via `nvm install && nvm use`
+- `corepack` with `pnpm` 10
+- Python 3.12+
+- `ansible-lint`
+- `yamllint`
+- Ansible collections from `requirements.yml`
+
+One working setup looks like this:
+
+```sh
+# Node / pnpm
+nvm install
+nvm use
+corepack enable
+pnpm install
+pnpm exec playwright install chromium
+
+# Python / Ansible linting
+python3 -m pip install --user ansible-lint yamllint
+ansible-galaxy collection install -r requirements.yml
+```
+
+Before opening or updating a PR, run the same checks expected by this repository:
+
+```sh
+pnpm run lint
+pnpm run prettier
+yamllint .
+ansible-lint
+ansible-playbook --syntax-check site.yml
+```
+
 ## Smoke test workflow
 
 The smoke tests run against a real EC2 instance provisioned by Terraform and configured by Ansible. There are three separate steps so you can debug between them.
