@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  role_name: novnc_desktop
+  author: markcallen
+  description: >
+    Installs and configures a full noVNC desktop stack: lightweight desktop
+    environment (Openbox or Elementary), VNC server, noVNC WebSocket proxy,
+    token-based auth, and an nginx HTTPS reverse proxy.
+  license: MIT
+  min_ansible_version: '2.13'
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+  galaxy_tags:
+    - novnc
+    - vnc
+    - desktop
+    - openbox
+    - nginx
+    - https
+
+dependencies: []

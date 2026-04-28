@@ -102,8 +102,43 @@ Destroys the EC2 instance, security group, and key pair.
 
 ## Ansible role usage
 
+### Install from GitHub (single requirements.yml entry)
+
+Add this to your `requirements.yml`:
+
+```yaml
+roles:
+  - name: markcallen.novnc_desktop
+    src: https://github.com/markcallen/novnc-desktop
+    scm: git
+    version: v0.1.1
+```
+
+Then install and run:
+
 ```sh
 ansible-galaxy install -r requirements.yml
+ansible-playbook playbook.yml -i <host>, -u ubuntu --private-key ~/.ssh/key.pem
+```
+
+Example playbook:
+
+```yaml
+---
+- name: Provision noVNC desktop
+  hosts: all
+  become: true
+  roles:
+    - markcallen.novnc_desktop
+```
+
+### Clone and run directly
+
+```sh
+git clone https://github.com/markcallen/novnc-desktop.git
+cd novnc-desktop
+git checkout v0.1.1
+ansible-galaxy collection install -r requirements.yml
 ansible-playbook site.yml -i <host>, -u ubuntu --private-key ~/.ssh/key.pem
 ```
 
