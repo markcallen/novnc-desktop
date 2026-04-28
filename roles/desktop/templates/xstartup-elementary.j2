@@ -5,13 +5,6 @@ export XDG_CURRENT_DESKTOP=Pantheon
 export XDG_SESSION_DESKTOP=pantheon
 export XDG_SESSION_TYPE=x11
 
-# Force Mesa software rendering. EC2 instances and VNC have no GPU/DRI3
-# hardware, so gala/mutter's Clutter compositor must use llvmpipe instead.
-# Without this, gala crashes on background actor initialisation.
-export LIBGL_ALWAYS_SOFTWARE=1
-export GALLIUM_DRIVER=llvmpipe
-export MESA_GL_VERSION_OVERRIDE=3.3
-
 dbus-launch --exit-with-session sh -lc "
   # Unlock GNOME Keyring with an empty password so Chrome and other apps
   # that use libsecret do not prompt for a keyring password in VNC sessions.
@@ -21,7 +14,9 @@ dbus-launch --exit-with-session sh -lc "
   # Launch gala before gnome-session. The pantheon-vnc session file omits gala
   # from RequiredComponents so gnome-session will not time it out; gala just
   # needs to be running on the display before the rest of the shell starts.
-  gala --replace &
+  # Force Mesa software rendering only for gala so the wider VNC session keeps
+  # its default GL environment.
+  LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe MESA_GL_VERSION_OVERRIDE=3.3 gala --replace &
 
 {% if smoke_test_marker_enabled | bool %}
   xterm -title SMOKE_READY -geometry 44x8+20+20 -bg '#00ff66' -fg black -e sh -lc \"printf 'SMOKE READY\n'; exec sh\" &

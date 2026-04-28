@@ -13,12 +13,16 @@
     state: present
     update_cache: true
 
+- name: Install Mesa software rendering driver
+  ansible.builtin.apt:
+    name: libgl1-mesa-dri
+    state: present
+
 - name: Install Pantheon desktop packages
   ansible.builtin.apt:
     name:
       - elementary-desktop
       - gnome-keyring
-      - libgl1-mesa-dri
     state: present
   register: elementary_install
   failed_when: false
