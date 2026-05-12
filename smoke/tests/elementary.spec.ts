@@ -18,7 +18,13 @@ interface CanvasResult {
 
 const sshArgs = [
   '-o',
+  'BatchMode=yes',
+  '-o',
+  'ConnectTimeout=10',
+  '-o',
   'StrictHostKeyChecking=no',
+  '-o',
+  'UserKnownHostsFile=/dev/null',
   '-i',
   state.sshKeyPath,
   `${state.vncUser}@${state.publicIp}`
@@ -27,7 +33,8 @@ const sshArgs = [
 function ssh(command: string): string {
   return execFileSync('ssh', [...sshArgs, command], {
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 15_000
   }).trim();
 }
 
@@ -82,7 +89,7 @@ test.describe('elementary', () => {
     await page.waitForTimeout(5_000);
     expect((await readCanvas(page)).active).toBe(true);
 
-    ssh('pkill -x gala');
+    ssh('pgrep -x gala >/dev/null && pkill -x gala || true');
 
     await expect
       .poll(

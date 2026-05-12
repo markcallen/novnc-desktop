@@ -22,4 +22,28 @@ if (!existsSync(stateFile)) {
   );
 }
 
-export const state: SmokeState = JSON.parse(readFileSync(stateFile, 'utf8'));
+const parsed = JSON.parse(
+  readFileSync(stateFile, 'utf8')
+) as Partial<SmokeState>;
+
+if (!parsed.publicIp || !parsed.vncUser || !parsed.sshKeyPath) {
+  throw new Error(
+    `Smoke state at ${stateFile} is missing SSH connection details.\n` +
+      `Re-run 'pnpm infra:up' to recreate the infrastructure state.`
+  );
+}
+
+if (!parsed.accessUrl) {
+  throw new Error(
+    `Smoke state at ${stateFile} does not include a desktop access URL.\n` +
+      `Run 'pnpm provision:openbox' or 'pnpm provision:elementary' first.`
+  );
+}
+
+export const state: SmokeState = {
+  publicIp: parsed.publicIp,
+  accessUrl: parsed.accessUrl,
+  desktopType: parsed.desktopType,
+  vncUser: parsed.vncUser,
+  sshKeyPath: parsed.sshKeyPath
+};
