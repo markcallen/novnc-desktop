@@ -8,6 +8,7 @@
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { ACTIVE_WINDOW_UNAVAILABLE, readActiveWindowName } from './helpers';
 import { state } from './state';
 
 interface CanvasResult {
@@ -39,13 +40,7 @@ function ssh(command: string): string {
 }
 
 function activeWindowName(): string {
-  const windowId = ssh(
-    "DISPLAY=:1 xprop -root _NET_ACTIVE_WINDOW | awk '{print $5}'"
-  );
-  const details = ssh(`DISPLAY=:1 xwininfo -id ${windowId} -wm`);
-  const match = details.match(/Window id: .*?"([^"]+)"/);
-
-  return match?.[1] ?? details;
+  return readActiveWindowName(ssh);
 }
 
 async function readCanvas(
@@ -151,6 +146,13 @@ test.describe('elementary', () => {
     expect((await readCanvas(page)).active).toBe(true);
 
     await page.locator('canvas').click({ position: { x: 260, y: 165 } });
+
+    await expect
+      .poll(activeWindowName, {
+        intervals: [500, 1000, 1000, 2000, 2000],
+        timeout: 10_000
+      })
+      .not.toBe(ACTIVE_WINDOW_UNAVAILABLE);
 
     await expect
       .poll(activeWindowName, {

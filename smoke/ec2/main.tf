@@ -77,8 +77,10 @@ data "aws_ami" "ubuntu" {
 }
 
 locals {
-  stack_name    = terraform.workspace == "default" ? var.stack_name : terraform.workspace
-  resource_name = "${var.name_prefix}-${local.stack_name}"
+  stack_name          = terraform.workspace == "default" ? var.stack_name : terraform.workspace
+  resource_name       = "${var.name_prefix}-${local.stack_name}"
+  http_ingress_ports  = distinct([80, var.novnc_http_port])
+  https_ingress_ports = distinct([443, var.novnc_https_port])
   selected_subnet_id = try([
     for subnet in values(data.aws_subnet.default) : subnet.id
     if(
@@ -102,36 +104,26 @@ resource "aws_security_group" "smoke" {
     cidr_blocks = [var.ssh_cidr]
   }
 
-  ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = [var.http_cidr]
+  dynamic "ingress" {
+    for_each = local.http_ingress_ports
+    content {
+      description = "HTTP ${ingress.value}"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = [var.http_cidr]
+    }
   }
 
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [var.https_cidr]
-  }
-
-  ingress {
-    description = "HTTP alternate"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = [var.http_cidr]
-  }
-
-  ingress {
-    description = "HTTPS alternate"
-    from_port   = 8443
-    to_port     = 8443
-    protocol    = "tcp"
-    cidr_blocks = [var.https_cidr]
+  dynamic "ingress" {
+    for_each = local.https_ingress_ports
+    content {
+      description = "HTTPS ${ingress.value}"
+      from_port   = ingress.value
+      to_port     = ingress.value
+      protocol    = "tcp"
+      cidr_blocks = [var.https_cidr]
+    }
   }
 
   # tfsec:ignore:aws-ec2-no-public-egress-sgr This ephemeral smoke host must reach package mirrors and Let's Encrypt endpoints.

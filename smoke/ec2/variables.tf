@@ -58,3 +58,15 @@ variable "https_cidr" {
   description = "CIDR allowed to reach HTTPS on the smoke test instance. For public browser checks you may need a broader range than /32."
   type        = string
 }
+
+variable "novnc_http_port" {
+  description = "Public HTTP port exposed by the smoke test security group for noVNC."
+  type        = number
+  default     = 80
+}
+
+variable "novnc_https_port" {
+  description = "Public HTTPS port exposed by the smoke test security group for noVNC."
+  type        = number
+  default     = 443
+}

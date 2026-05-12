@@ -120,6 +120,7 @@ pnpm provision:elementary:custom-ports
 ```
 
 This installs noVNC behind nginx on `8080/8443` and updates the smoke state so `pnpm test` targets those ports.
+The shared provision helper also accepts `NOVNC_HTTP_PORT` / `NOVNC_HTTPS_PORT` overrides for other smoke port pairs.
 
 ### 3. Check connection details
 
@@ -195,16 +196,16 @@ ansible-playbook site.yml -i <host>, -u ubuntu --private-key ~/.ssh/key.pem
 
 Key variables:
 
-| Variable                    | Default    | Description                                       |
-| --------------------------- | ---------- | ------------------------------------------------- |
-| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`      |
-| `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session             |
-| `vnc_geometry`              | `1280x720` | Screen resolution                                 |
-| `auth_token_ttl_seconds`    | `28800`    | Token lifetime in seconds (default 8 hours)       |
-| `novnc_http_port`           | `80`       | Public HTTP port that redirects to HTTPS          |
-| `novnc_https_port`          | `443`      | Public HTTPS port served by nginx                 |
-| `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition     |
-| `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification |
+| Variable                    | Default    | Description                                                    |
+| --------------------------- | ---------- | -------------------------------------------------------------- |
+| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`                   |
+| `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session                          |
+| `vnc_geometry`              | `1280x720` | Screen resolution                                              |
+| `auth_token_ttl_seconds`    | `28800`    | Token lifetime in seconds (default 8 hours)                    |
+| `novnc_http_port`           | `80`       | Public HTTP port that redirects to HTTPS                       |
+| `novnc_https_port`          | `443`      | Public HTTPS port served by nginx                              |
+| `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition on `80/443` only |
+| `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification              |
 
 After provisioning, SSH in and run `novnc-desktop-url` to get a signed HTTPS URL for the desktop.
 

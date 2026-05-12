@@ -5,6 +5,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { buildBaseUrl, parseTcpPort } from './helpers';
 
 export interface SmokeState {
   publicIp: string;
@@ -45,14 +46,20 @@ if (!parsed.accessUrl) {
   );
 }
 
+const novncHttpPort = parseTcpPort(parsed.novncHttpPort ?? 80, 'novncHttpPort');
+const novncHttpsPort = parseTcpPort(
+  parsed.novncHttpsPort ?? 443,
+  'novncHttpsPort'
+);
+
 export const state: SmokeState = {
   publicIp: parsed.publicIp,
   accessUrl: parsed.accessUrl,
   desktopType: parsed.desktopType,
-  novncHttpPort: Number(parsed.novncHttpPort ?? 80),
-  novncHttpsPort: Number(parsed.novncHttpsPort ?? 443),
-  httpBaseUrl: `http://${parsed.publicIp}${Number(parsed.novncHttpPort ?? 80) === 80 ? '' : `:${Number(parsed.novncHttpPort ?? 80)}`}`,
-  httpsBaseUrl: `https://${parsed.publicIp}${Number(parsed.novncHttpsPort ?? 443) === 443 ? '' : `:${Number(parsed.novncHttpsPort ?? 443)}`}`,
+  novncHttpPort,
+  novncHttpsPort,
+  httpBaseUrl: buildBaseUrl('http', parsed.publicIp, novncHttpPort),
+  httpsBaseUrl: buildBaseUrl('https', parsed.publicIp, novncHttpsPort),
   vncUser: parsed.vncUser,
   sshKeyPath: parsed.sshKeyPath
 };

@@ -87,11 +87,11 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 
 ### FR-4 — TLS certificates
 
-| ID     | Requirement                                                                                                                                                                                                 |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-4.1 | A self-signed certificate valid for 730 days is generated at provisioning time and used by default. Nginx starts successfully with this certificate.                                                        |
-| FR-4.2 | When `use_certbot: true` is set, `tls_domain` resolves to a publicly routable IP address, and `letsencrypt_email` is configured, the role obtains a Let's Encrypt certificate via the Nginx certbot plugin. |
-| FR-4.3 | If any condition for FR-4.2 is not met, the role falls back to the self-signed certificate without failing. The fallback reason is reported via an Ansible debug message.                                   |
+| ID     | Requirement                                                                                                                                                                                                                                                         |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-4.1 | A self-signed certificate valid for 730 days is generated at provisioning time and used by default. Nginx starts successfully with this certificate.                                                                                                                |
+| FR-4.2 | When `use_certbot: true` is set, `tls_domain` resolves to a publicly routable IP address, `letsencrypt_email` is configured, and `novnc_http_port`/`novnc_https_port` remain `80`/`443`, the role obtains a Let's Encrypt certificate via the Nginx certbot plugin. |
+| FR-4.3 | If any condition for FR-4.2 is not met, the role falls back to the self-signed certificate without failing. The fallback reason is reported via an Ansible debug message.                                                                                           |
 
 ### FR-5 — Desktop environments
 
@@ -102,6 +102,7 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | FR-5.3 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                                       |
 | FR-5.4 | **Elementary (Pantheon)**: when `gala` crashes during VNC session startup or while the session remains active under software rendering, the session automatically restarts `gala` without requiring a TigerVNC service restart. |
 | FR-5.5 | **Elementary (Pantheon)**: when `smoke_test_marker_enabled=true`, the `SMOKE_READY` xterm is raised and focused after session startup so keyboard input works immediately through noVNC.                                        |
+| FR-5.6 | **Elementary (Pantheon)**: the Pantheon shell override used to suppress focus-stealing components is deployed only when `smoke_test_marker_enabled=true` so non-smoke sessions keep the default shell layout.                   |
 
 ### FR-6 — `novnc-auth` service
 
@@ -187,7 +188,7 @@ SSH user
 | `novnc_https_port`          | `443`                                                 | Public HTTPS port served by Nginx                                                          |
 | `novnc_base_url`            | `https://{{ inventory_hostname }}[:novnc_https_port]` | Base URL embedded in generated access URLs; includes the HTTPS port when it is non-default |
 | `auth_service_port`         | `8898`                                                | Port the `novnc-auth` service listens on (localhost only)                                  |
-| `use_certbot`               | `false`                                               | Attempt Let's Encrypt certificate acquisition                                              |
+| `use_certbot`               | `false`                                               | Attempt Let's Encrypt certificate acquisition on standard ports `80/443` only              |
 | `tls_domain`                | `{{ inventory_hostname }}`                            | Domain for the TLS certificate                                                             |
 | `letsencrypt_email`         | `""`                                                  | Email for Let's Encrypt registration                                                       |
 | `smoke_test_marker_enabled` | `false`                                               | Renders a bright-green xterm for smoke test canvas verification                            |

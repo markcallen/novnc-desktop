@@ -33,6 +33,20 @@ NOVNC_HTTP_PORT="${NOVNC_HTTP_PORT:-80}"
 NOVNC_HTTPS_PORT="${NOVNC_HTTPS_PORT:-443}"
 
 PUBLIC_IP=$(jq -r '.publicIp' "$STATE_FILE")
+PUBLIC_DNS=$(jq -r '.publicDns' "$STATE_FILE")
+
+validate_port() {
+  local value="$1"
+  local name="$2"
+
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || (( value < 1 || value > 65535 )); then
+    echo "ERROR: $name must be an integer TCP port between 1 and 65535. Received: $value" >&2
+    exit 1
+  fi
+}
+
+validate_port "$NOVNC_HTTP_PORT" "NOVNC_HTTP_PORT"
+validate_port "$NOVNC_HTTPS_PORT" "NOVNC_HTTPS_PORT"
 
 # ---------------------------------------------------------------------------
 # 1. Ansible Galaxy dependencies
@@ -40,6 +54,21 @@ PUBLIC_IP=$(jq -r '.publicIp' "$STATE_FILE")
 echo "[provision:$DESKTOP_TYPE] Installing Ansible Galaxy requirements..."
 cd "$REPO_ROOT"
 ansible-galaxy install -r requirements.yml --force
+
+# ---------------------------------------------------------------------------
+# 1b. Terraform — align smoke security group ingress with the requested ports
+# ---------------------------------------------------------------------------
+echo "[provision:$DESKTOP_TYPE] Ensuring smoke security group allows HTTP $NOVNC_HTTP_PORT and HTTPS $NOVNC_HTTPS_PORT..."
+cd "$REPO_ROOT/smoke/ec2"
+terraform apply \
+  -auto-approve \
+  -input=false \
+  -var "novnc_http_port=$NOVNC_HTTP_PORT" \
+  -var "novnc_https_port=$NOVNC_HTTPS_PORT"
+
+PUBLIC_IP=$(terraform output -raw public_ip)
+PUBLIC_DNS=$(terraform output -raw public_dns)
+cd "$REPO_ROOT"
 
 # ---------------------------------------------------------------------------
 # 2. Ansible — provision the desktop
@@ -75,8 +104,6 @@ fi
 # ---------------------------------------------------------------------------
 # 4. Update state with access URL and desktop type
 # ---------------------------------------------------------------------------
-PUBLIC_DNS=$(jq -r '.publicDns' "$STATE_FILE")
-
 cat > "$STATE_FILE" <<EOF
 {
   "publicIp": "$PUBLIC_IP",

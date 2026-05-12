@@ -83,6 +83,7 @@
     owner: '{{ vnc_user }}'
     group: '{{ vnc_user }}'
     mode: '0755'
+  when: smoke_test_marker_enabled | bool
 
 - name: Deploy Pantheon xstartup
   ansible.builtin.template:
@@ -99,6 +100,7 @@
     owner: '{{ vnc_user }}'
     group: '{{ vnc_user }}'
     mode: '0644'
+  when: smoke_test_marker_enabled | bool
 
 - name: Ensure polkit rules directory exists
   ansible.builtin.file:
