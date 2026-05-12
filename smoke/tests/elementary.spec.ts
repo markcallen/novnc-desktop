@@ -38,6 +38,16 @@ function ssh(command: string): string {
   }).trim();
 }
 
+function activeWindowName(): string {
+  const windowId = ssh(
+    "DISPLAY=:1 xprop -root _NET_ACTIVE_WINDOW | awk '{print $5}'"
+  );
+  const details = ssh(`DISPLAY=:1 xwininfo -id ${windowId} -wm`);
+  const match = details.match(/Window id: .*?"([^"]+)"/);
+
+  return match?.[1] ?? details;
+}
+
 async function readCanvas(
   page: import('@playwright/test').Page
 ): Promise<CanvasResult> {
@@ -119,5 +129,34 @@ test.describe('elementary', () => {
         `greenPixels=${result.greenPixels}, sampledPixels=${result.sampledPixels}. ` +
         `Check .smoke-artifacts/elementary-gala-restart.png for the captured frame.`
     ).toBe(true);
+  });
+
+  test('smoke marker xterm keeps keyboard focus through noVNC', async ({
+    page
+  }) => {
+    await page.goto(state.accessUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60_000
+    });
+
+    await page.waitForFunction(
+      () => {
+        const canvas = document.querySelector('canvas');
+        return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
+      },
+      { timeout: 60_000 }
+    );
+
+    await page.waitForTimeout(5_000);
+    expect((await readCanvas(page)).active).toBe(true);
+
+    await page.locator('canvas').click({ position: { x: 260, y: 165 } });
+
+    await expect
+      .poll(activeWindowName, {
+        intervals: [500, 1000, 1000, 2000, 2000],
+        timeout: 10_000
+      })
+      .toContain('SMOKE_READY');
   });
 });

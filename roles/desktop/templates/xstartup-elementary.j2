@@ -25,6 +25,17 @@ dbus-launch --exit-with-session sh -lc "
 
 {% if smoke_test_marker_enabled | bool %}
   xterm -title SMOKE_READY -geometry 44x8+20+20 -bg '#00ff66' -fg black -e sh -lc \"printf 'SMOKE READY\n'; exec sh\" &
+  (
+    # Pantheon's dock often retains focus after session startup under VNC.
+    # Re-activate the smoke marker once the shell has mapped so keyboard
+    # input works immediately in noVNC.
+    for _ in \$(seq 1 30); do
+      if wmctrl -a SMOKE_READY 2>/dev/null; then
+        break
+      fi
+      sleep 1
+    done
+  ) &
 {% endif %}
 
   exec gnome-session --session=pantheon-vnc
