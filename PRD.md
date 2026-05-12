@@ -68,7 +68,7 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | ID     | Requirement                                                                                                                                                                                                 |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-2.1 | TigerVNC binds to `127.0.0.1` only and is configured with `SecurityTypes=None`. VNC is not directly reachable from outside the host.                                                                        |
-| FR-2.2 | All public traffic is served by Nginx over HTTPS. HTTP requests are redirected to HTTPS.                                                                                                                    |
+| FR-2.2 | All public traffic is served by Nginx over HTTPS. The public HTTP and HTTPS listen ports are configurable, and requests received on the configured HTTP port are redirected to the configured HTTPS port.   |
 | FR-2.3 | Every request to the noVNC interface is gated by an Nginx `auth_request` subrequest to the `novnc-auth` service. Unauthenticated requests receive a `302` redirect to `/access`.                            |
 | FR-2.4 | Access tokens are HMAC-SHA256 signed, contain an expiry timestamp, and are verified on every request. A tampered or expired token is rejected.                                                              |
 | FR-2.5 | The HMAC secret is generated randomly at provisioning time and stored at `/etc/novnc-auth/secret` (mode `0600`, owned by the `novnc-auth` service user). It is never written to a playbook variable or log. |
@@ -80,18 +80,18 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | ID     | Requirement                                                                                                                                                                       |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-3.1 | `novnc-desktop-url` is installed to `/usr/local/bin/novnc-desktop-url` and is executable by any user on the host.                                                                 |
-| FR-3.2 | Running `novnc-desktop-url` prints a complete HTTPS URL and its expiry time to stdout.                                                                                            |
+| FR-3.2 | Running `novnc-desktop-url` prints a complete HTTPS URL and its expiry time to stdout. When `novnc_https_port` is not `443`, the generated URL includes that port by default.     |
 | FR-3.3 | The URL, when opened in a browser, authenticates the session, sets the access cookie, and redirects to `vnc.html?autoconnect=1&resize=remote` without any additional user action. |
 | FR-3.4 | The default token TTL is 8 hours. It is configurable via the `auth_token_ttl_seconds` variable.                                                                                   |
 | FR-3.5 | If the `novnc-auth` service is not running, `novnc-desktop-url` exits with a non-zero status and a human-readable error message.                                                  |
 
 ### FR-4 — TLS certificates
 
-| ID     | Requirement                                                                                                                                                                                                 |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-4.1 | A self-signed certificate valid for 730 days is generated at provisioning time and used by default. Nginx starts successfully with this certificate.                                                        |
-| FR-4.2 | When `use_certbot: true` is set, `tls_domain` resolves to a publicly routable IP address, and `letsencrypt_email` is configured, the role obtains a Let's Encrypt certificate via the Nginx certbot plugin. |
-| FR-4.3 | If any condition for FR-4.2 is not met, the role falls back to the self-signed certificate without failing. The fallback reason is reported via an Ansible debug message.                                   |
+| ID     | Requirement                                                                                                                                                                                                                                                         |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-4.1 | A self-signed certificate valid for 730 days is generated at provisioning time and used by default. Nginx starts successfully with this certificate.                                                                                                                |
+| FR-4.2 | When `use_certbot: true` is set, `tls_domain` resolves to a publicly routable IP address, `letsencrypt_email` is configured, and `novnc_http_port`/`novnc_https_port` remain `80`/`443`, the role obtains a Let's Encrypt certificate via the Nginx certbot plugin. |
+| FR-4.3 | If any condition for FR-4.2 is not met, the role falls back to the self-signed certificate without failing. The fallback reason is reported via an Ansible debug message.                                                                                           |
 
 ### FR-5 — Desktop environments
 
@@ -101,6 +101,8 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | FR-5.2 | **Elementary (Pantheon)**: installs from `ppa:elementary-os/stable`. Treated as best-effort; if the PPA does not support the host's Ubuntu release the task warns and continues rather than failing the playbook.               |
 | FR-5.3 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                                       |
 | FR-5.4 | **Elementary (Pantheon)**: when `gala` crashes during VNC session startup or while the session remains active under software rendering, the session automatically restarts `gala` without requiring a TigerVNC service restart. |
+| FR-5.5 | **Elementary (Pantheon)**: when `smoke_test_marker_enabled=true`, the `SMOKE_READY` xterm is raised and focused after session startup so keyboard input works immediately through noVNC.                                        |
+| FR-5.6 | **Elementary (Pantheon)**: the Pantheon shell override used to suppress focus-stealing components is deployed only when `smoke_test_marker_enabled=true` so non-smoke sessions keep the default shell layout.                   |
 
 ### FR-6 — `novnc-auth` service
 
@@ -123,7 +125,7 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | NFR-2 | **Minimal footprint.** The role installs only what is needed. It does not install Node.js, Docker, or any runtime not already implied by the selected desktop type.    |
 | NFR-3 | **No external API calls at access time.** Token validation is purely local (HMAC verification + timestamp check). The `novnc-auth` service makes no outbound requests. |
 | NFR-4 | **Composability.** The role exposes clean variable interfaces so it can be imported and overridden by a parent playbook (e.g. `ai-agent-desktop`) without forking.     |
-| NFR-5 | **Firewall by default.** UFW is enabled at the end of provisioning. Only SSH (22) and Nginx Full (80, 443) are permitted inbound.                                      |
+| NFR-5 | **Firewall by default.** UFW is enabled at the end of provisioning. Only SSH (22) and the configured public noVNC HTTP/HTTPS ports are permitted inbound.              |
 
 ---
 
@@ -131,7 +133,7 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 
 ```
 Browser
-  │  HTTPS 443
+  │  HTTPS {{ novnc_https_port }}
   ▼
 Nginx
   ├── GET /access?token=...  ──────────────────► novnc-auth :8898
@@ -168,26 +170,28 @@ SSH user
 | Auth service    | Python 3 stdlib                 | `novnc-auth.py`; HMAC-SHA256 tokens  |
 | Reverse proxy   | Nginx                           | TLS termination + `auth_request`     |
 | TLS             | openssl (self-signed) / certbot | self-signed by default               |
-| Firewall        | UFW                             | SSH + Nginx Full only                |
+| Firewall        | UFW                             | SSH + configured public noVNC ports  |
 
 ---
 
 ## Configuration Reference
 
-| Variable                    | Default                            | Description                                                     |
-| --------------------------- | ---------------------------------- | --------------------------------------------------------------- |
-| `desktop_type`              | `openbox`                          | Desktop environment: `openbox`, `elementary`                    |
-| `vnc_user`                  | `ubuntu`                           | OS user that owns the desktop session                           |
-| `vnc_display`               | `1`                                | X display number                                                |
-| `vnc_geometry`              | `1280x720`                         | Screen resolution                                               |
-| `vnc_depth`                 | `24`                               | Colour depth                                                    |
-| `auth_token_ttl_seconds`    | `28800`                            | Token lifetime (8 hours)                                        |
-| `novnc_base_url`            | `https://{{ inventory_hostname }}` | Base URL embedded in generated access URLs                      |
-| `auth_service_port`         | `8898`                             | Port the `novnc-auth` service listens on (localhost only)       |
-| `use_certbot`               | `false`                            | Attempt Let's Encrypt certificate acquisition                   |
-| `tls_domain`                | `{{ inventory_hostname }}`         | Domain for the TLS certificate                                  |
-| `letsencrypt_email`         | `""`                               | Email for Let's Encrypt registration                            |
-| `smoke_test_marker_enabled` | `false`                            | Renders a bright-green xterm for smoke test canvas verification |
+| Variable                    | Default                                               | Description                                                                                |
+| --------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `desktop_type`              | `openbox`                                             | Desktop environment: `openbox`, `elementary`                                               |
+| `vnc_user`                  | `ubuntu`                                              | OS user that owns the desktop session                                                      |
+| `vnc_display`               | `1`                                                   | X display number                                                                           |
+| `vnc_geometry`              | `1280x720`                                            | Screen resolution                                                                          |
+| `vnc_depth`                 | `24`                                                  | Colour depth                                                                               |
+| `auth_token_ttl_seconds`    | `28800`                                               | Token lifetime (8 hours)                                                                   |
+| `novnc_http_port`           | `80`                                                  | Public HTTP port that redirects to HTTPS                                                   |
+| `novnc_https_port`          | `443`                                                 | Public HTTPS port served by Nginx                                                          |
+| `novnc_base_url`            | `https://{{ inventory_hostname }}[:novnc_https_port]` | Base URL embedded in generated access URLs; includes the HTTPS port when it is non-default |
+| `auth_service_port`         | `8898`                                                | Port the `novnc-auth` service listens on (localhost only)                                  |
+| `use_certbot`               | `false`                                               | Attempt Let's Encrypt certificate acquisition on standard ports `80/443` only              |
+| `tls_domain`                | `{{ inventory_hostname }}`                            | Domain for the TLS certificate                                                             |
+| `letsencrypt_email`         | `""`                                                  | Email for Let's Encrypt registration                                                       |
+| `smoke_test_marker_enabled` | `false`                                               | Renders a bright-green xterm for smoke test canvas verification                            |
 
 ---
 

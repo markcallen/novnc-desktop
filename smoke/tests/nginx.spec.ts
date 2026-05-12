@@ -8,8 +8,6 @@
 import { test, expect } from '@playwright/test';
 import { state } from './state';
 
-const { publicIp } = state;
-
 test.describe('nginx', () => {
   test('HTTPS endpoint responds', async ({ request }) => {
     // baseURL is https://ip so a relative path uses HTTPS.
@@ -29,13 +27,27 @@ test.describe('nginx', () => {
     // (no token), which the auth service handles. Ignore navigation errors
     // caused by redirect loops — we only care about the first response.
     await page
-      .goto(`http://${publicIp}/`, { waitUntil: 'commit', timeout: 15_000 })
+      .goto(`${state.httpBaseUrl}/`, { waitUntil: 'commit', timeout: 15_000 })
       .catch(() => {});
 
     const first = responses[0];
     expect(first, 'no response received from HTTP request').toBeTruthy();
     expect(first.status()).toBe(301);
-    expect(first.headers()['location']).toMatch(/^https:/i);
+
+    const location = first.headers()['location'];
+    expect(location).toBeTruthy();
+
+    const redirected = new URL(location);
+    expect(redirected.protocol).toBe('https:');
+    expect(redirected.hostname).toBe(state.publicIp);
+    expect(redirected.port || '443').toBe(String(state.novncHttpsPort));
+  });
+
+  test('generated access URL uses configured HTTPS port', () => {
+    const accessUrl = new URL(state.accessUrl);
+    expect(accessUrl.protocol).toBe('https:');
+    expect(accessUrl.hostname).toBe(state.publicIp);
+    expect(accessUrl.port || '443').toBe(String(state.novncHttpsPort));
   });
 
   test('unauthenticated request to / redirects to /access', async ({

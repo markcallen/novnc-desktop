@@ -32,6 +32,15 @@
       }}
   when: use_certbot | bool
 
+- name: Evaluate certbot port support
+  ansible.builtin.set_fact:
+    novnc_certbot_supported_ports: >-
+      {{
+        (novnc_http_port | int) == 80 and
+        (novnc_https_port | int) == 443
+      }}
+  when: use_certbot | bool
+
 - name: Check if tls_domain resolves to a public IP
   when: use_certbot | bool
   block:
@@ -54,7 +63,8 @@
             novnc_resolved_ip | default('') != '' and
             not (novnc_resolved_ip | ansible.utils.ipaddr('private')) and
             not (novnc_resolved_ip | ansible.utils.ipaddr('loopback')) and
-            novnc_letsencrypt_email | default('') | length > 0
+            novnc_letsencrypt_email | default('') | length > 0 and
+            novnc_certbot_supported_ports | default(false)
           }}
 
     - name: Report certbot viability
@@ -63,6 +73,8 @@
           DNS lookup for {{ novnc_tls_domain }}:
           {% if novnc_dns_lookup.rc == 0 %}resolved to {{ novnc_resolved_ip }}{% else %}failed{% endif %},
           email: {{ novnc_letsencrypt_email | default('not set') }},
+          ports supported: {{ novnc_certbot_supported_ports | default(false) }}
+          (http={{ novnc_http_port }}, https={{ novnc_https_port }}),
           certbot viable: {{ novnc_certbot_viable }}
 
 - name: Set novnc_certbot_viable to false when certbot is disabled
@@ -107,13 +119,17 @@
     state: absent
   notify: Reload nginx
 
-- name: Allow SSH and HTTPS through UFW
+- name: Allow SSH through UFW
   community.general.ufw:
     rule: allow
-    name: '{{ item }}'
-  loop:
-    - OpenSSH
-    - 'Nginx Full'
+    name: OpenSSH
+
+- name: Allow configured noVNC HTTP/HTTPS ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: '{{ item }}'
+    proto: tcp
+  loop: '{{ [novnc_http_port | int, novnc_https_port | int] | unique }}'
 
 - name: Enable UFW
   community.general.ufw:

@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { readFileSync, existsSync } from 'node:fs';
+import { buildBaseUrl, parseTcpPort } from './smoke/tests/helpers';
 
 const stateFile = '.smoke-state/state.json';
 
@@ -12,7 +13,11 @@ if (!existsSync(stateFile)) {
 
 const state = JSON.parse(readFileSync(stateFile, 'utf8')) as {
   publicIp: string;
+  novncHttpsPort?: number;
 };
+
+const httpsPort = parseTcpPort(state.novncHttpsPort ?? 443, 'novncHttpsPort');
+const baseURL = buildBaseUrl('https', state.publicIp, httpsPort);
 
 export default defineConfig({
   testDir: 'smoke/tests',
@@ -22,7 +27,7 @@ export default defineConfig({
     ['html', { open: 'never', outputFolder: '.smoke-artifacts/report' }]
   ],
   use: {
-    baseURL: `https://${state.publicIp}`,
+    baseURL,
     ignoreHTTPSErrors: true,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'

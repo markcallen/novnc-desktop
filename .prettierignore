@@ -9,3 +9,4 @@ pnpm-lock.yaml
 .codex
 .claude
 .ballast
+smoke/ec2/

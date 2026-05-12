@@ -8,6 +8,8 @@
 #
 # Optional environment variables:
 #   VNC_USER       — SSH username on the EC2 instance (default: ubuntu)
+#   NOVNC_HTTP_PORT  — public HTTP port passed to the role (default: 80)
+#   NOVNC_HTTPS_PORT — public HTTPS port passed to the role (default: 443)
 
 set -euo pipefail
 
@@ -27,8 +29,24 @@ _STATE_SSH_KEY_PATH=$(jq -r '.sshKeyPath // ""' "$STATE_FILE")
 
 VNC_USER="${VNC_USER:-$_STATE_VNC_USER}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-${_STATE_SSH_KEY_PATH:-$REPO_ROOT/.smoke-keys/smoke.pem}}"
+NOVNC_HTTP_PORT="${NOVNC_HTTP_PORT:-80}"
+NOVNC_HTTPS_PORT="${NOVNC_HTTPS_PORT:-443}"
 
 PUBLIC_IP=$(jq -r '.publicIp' "$STATE_FILE")
+PUBLIC_DNS=$(jq -r '.publicDns' "$STATE_FILE")
+
+validate_port() {
+  local value="$1"
+  local name="$2"
+
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || (( value < 1 || value > 65535 )); then
+    echo "ERROR: $name must be an integer TCP port between 1 and 65535. Received: $value" >&2
+    exit 1
+  fi
+}
+
+validate_port "$NOVNC_HTTP_PORT" "NOVNC_HTTP_PORT"
+validate_port "$NOVNC_HTTPS_PORT" "NOVNC_HTTPS_PORT"
 
 # ---------------------------------------------------------------------------
 # 1. Ansible Galaxy dependencies
@@ -36,6 +54,21 @@ PUBLIC_IP=$(jq -r '.publicIp' "$STATE_FILE")
 echo "[provision:$DESKTOP_TYPE] Installing Ansible Galaxy requirements..."
 cd "$REPO_ROOT"
 ansible-galaxy install -r requirements.yml --force
+
+# ---------------------------------------------------------------------------
+# 1b. Terraform — align smoke security group ingress with the requested ports
+# ---------------------------------------------------------------------------
+echo "[provision:$DESKTOP_TYPE] Ensuring smoke security group allows HTTP $NOVNC_HTTP_PORT and HTTPS $NOVNC_HTTPS_PORT..."
+cd "$REPO_ROOT/smoke/ec2"
+terraform apply \
+  -auto-approve \
+  -input=false \
+  -var "novnc_http_port=$NOVNC_HTTP_PORT" \
+  -var "novnc_https_port=$NOVNC_HTTPS_PORT"
+
+PUBLIC_IP=$(terraform output -raw public_ip)
+PUBLIC_DNS=$(terraform output -raw public_dns)
+cd "$REPO_ROOT"
 
 # ---------------------------------------------------------------------------
 # 2. Ansible — provision the desktop
@@ -47,7 +80,7 @@ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook site.yml \
   -i "$PUBLIC_IP," \
   -u "$VNC_USER" \
   --private-key "$SSH_KEY_PATH" \
-  -e "desktop_type=$DESKTOP_TYPE smoke_test_marker_enabled=true"
+  -e "desktop_type=$DESKTOP_TYPE smoke_test_marker_enabled=true novnc_http_port=$NOVNC_HTTP_PORT novnc_https_port=$NOVNC_HTTPS_PORT"
 
 # ---------------------------------------------------------------------------
 # 3. Fetch a time-limited desktop access URL
@@ -71,14 +104,14 @@ fi
 # ---------------------------------------------------------------------------
 # 4. Update state with access URL and desktop type
 # ---------------------------------------------------------------------------
-PUBLIC_DNS=$(jq -r '.publicDns' "$STATE_FILE")
-
 cat > "$STATE_FILE" <<EOF
 {
   "publicIp": "$PUBLIC_IP",
   "publicDns": "$PUBLIC_DNS",
   "accessUrl": "$ACCESS_URL",
   "desktopType": "$DESKTOP_TYPE",
+  "novncHttpPort": $NOVNC_HTTP_PORT,
+  "novncHttpsPort": $NOVNC_HTTPS_PORT,
   "vncUser": "$VNC_USER",
   "sshKeyPath": "$SSH_KEY_PATH"
 }

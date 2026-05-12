@@ -5,18 +5,18 @@ map $http_upgrade $connection_upgrade {
 
 # Redirect all HTTP to HTTPS.
 server {
-  listen 80 default_server;
-  listen [::]:80 default_server;
+  listen {{ novnc_http_port }} default_server;
+  listen [::]:{{ novnc_http_port }} default_server;
   server_name {{ novnc_tls_domain }};
 
   location / {
-    return 301 https://$host$request_uri;
+    return 301 https://$host{% if (novnc_https_port | int) != 443 %}:{{ novnc_https_port }}{% endif %}$request_uri;
   }
 }
 
 server {
-  listen 443 ssl http2;
-  listen [::]:443 ssl http2;
+  listen {{ novnc_https_port }} ssl http2;
+  listen [::]:{{ novnc_https_port }} ssl http2;
   server_name {{ novnc_tls_domain }};
 
   # Self-signed cert on first provision; certbot updates these paths when viable.

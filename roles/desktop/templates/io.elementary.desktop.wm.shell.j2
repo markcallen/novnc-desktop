@@ -1,0 +1,7 @@
+[io.elementary.wingpanel]
+launch-on-x=true
+args=io.elementary.wingpanel
+
+[io.elementary.dock]
+launch-on-x={{ 'false' if smoke_test_marker_enabled | bool else 'true' }}
+args=io.elementary.dock

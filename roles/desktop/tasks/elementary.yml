@@ -23,6 +23,7 @@
     name:
       - elementary-desktop
       - gnome-keyring
+      - wmctrl
     state: present
   register: elementary_install
   failed_when: false
@@ -75,6 +76,15 @@
     group: '{{ vnc_user }}'
     mode: '0700'
 
+- name: Create user config directory
+  ansible.builtin.file:
+    path: '{{ desktop_vnc_home }}/.config'
+    state: directory
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
+  when: smoke_test_marker_enabled | bool
+
 - name: Deploy Pantheon xstartup
   ansible.builtin.template:
     src: xstartup-elementary.j2
@@ -82,6 +92,15 @@
     owner: '{{ vnc_user }}'
     group: '{{ vnc_user }}'
     mode: '0755'
+
+- name: Override Pantheon shell components for VNC
+  ansible.builtin.template:
+    src: io.elementary.desktop.wm.shell.j2
+    dest: '{{ desktop_vnc_home }}/.config/io.elementary.desktop.wm.shell'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+  when: smoke_test_marker_enabled | bool
 
 - name: Ensure polkit rules directory exists
   ansible.builtin.file:

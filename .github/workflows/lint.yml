@@ -33,3 +33,6 @@ jobs:
 
       - name: Prettier check
         run: pnpm run prettier
+
+      - name: Unit tests
+        run: pnpm run test:unit

@@ -3,8 +3,13 @@
 auth_token_ttl_seconds: 28800
 
 # Base URL used when building the access URL returned by novnc-desktop-url.
-# Should match the public HTTPS address of this host.
-novnc_base_url: 'https://{{ inventory_hostname }}'
+# Should match the public HTTPS address of this host. Includes the configured
+# HTTPS port automatically when it is not the default 443.
+novnc_https_port: 443
+novnc_base_url: >-
+  https://{{ inventory_hostname }}{{
+    '' if (novnc_https_port | int) == 443 else ':' ~ (novnc_https_port | string)
+  }}
 
 # Port the auth service listens on (localhost only).
 auth_service_port: 8898

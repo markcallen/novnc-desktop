@@ -8,6 +8,7 @@
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { ACTIVE_WINDOW_UNAVAILABLE, readActiveWindowName } from './helpers';
 import { state } from './state';
 
 interface CanvasResult {
@@ -36,6 +37,10 @@ function ssh(command: string): string {
     stdio: ['ignore', 'pipe', 'pipe'],
     timeout: 15_000
   }).trim();
+}
+
+function activeWindowName(): string {
+  return readActiveWindowName(ssh);
 }
 
 async function readCanvas(
@@ -119,5 +124,41 @@ test.describe('elementary', () => {
         `greenPixels=${result.greenPixels}, sampledPixels=${result.sampledPixels}. ` +
         `Check .smoke-artifacts/elementary-gala-restart.png for the captured frame.`
     ).toBe(true);
+  });
+
+  test('smoke marker xterm keeps keyboard focus through noVNC', async ({
+    page
+  }) => {
+    await page.goto(state.accessUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60_000
+    });
+
+    await page.waitForFunction(
+      () => {
+        const canvas = document.querySelector('canvas');
+        return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
+      },
+      { timeout: 60_000 }
+    );
+
+    await page.waitForTimeout(5_000);
+    expect((await readCanvas(page)).active).toBe(true);
+
+    await page.locator('canvas').click({ position: { x: 260, y: 165 } });
+
+    await expect
+      .poll(activeWindowName, {
+        intervals: [500, 1000, 1000, 2000, 2000],
+        timeout: 10_000
+      })
+      .not.toBe(ACTIVE_WINDOW_UNAVAILABLE);
+
+    await expect
+      .poll(activeWindowName, {
+        intervals: [500, 1000, 1000, 2000, 2000],
+        timeout: 10_000
+      })
+      .toContain('SMOKE_READY');
   });
 });
