@@ -15,7 +15,7 @@ dbus-launch --exit-with-session sh -lc "
   # during startup, which leaves Pantheon unrendered even though VNC itself is
   # healthy. The parent PID survives the exec below, so the supervisor exits
   # cleanly when gnome-session ends instead of respawning forever after logout.
-  session_pid=\$$
+  session_pid=\$\$
   (
     while kill -0 \"\$session_pid\" 2>/dev/null; do
       LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe MESA_GL_VERSION_OVERRIDE=3.3 gala --replace
