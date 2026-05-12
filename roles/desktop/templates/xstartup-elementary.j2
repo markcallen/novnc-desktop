@@ -11,12 +11,17 @@ dbus-launch --exit-with-session sh -lc "
   eval \$(echo '' | gnome-keyring-daemon --unlock --components=secrets,pkcs11,ssh 2>/dev/null)
   export GNOME_KEYRING_CONTROL SSH_AUTH_SOCK
 
-  # Launch gala before gnome-session. The pantheon-vnc session file omits gala
-  # from RequiredComponents so gnome-session will not time it out; gala just
-  # needs to be running on the display before the rest of the shell starts.
-  # Force Mesa software rendering only for gala so the wider VNC session keeps
-  # its default GL environment.
-  LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe MESA_GL_VERSION_OVERRIDE=3.3 gala --replace &
+  # Keep gala alive for the life of the session. Under llvmpipe it can crash
+  # during startup, which leaves Pantheon unrendered even though VNC itself is
+  # healthy. The parent PID survives the exec below, so the supervisor exits
+  # cleanly when gnome-session ends instead of respawning forever after logout.
+  session_pid=\$$
+  (
+    while kill -0 \"\$session_pid\" 2>/dev/null; do
+      LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe MESA_GL_VERSION_OVERRIDE=3.3 gala --replace
+      sleep 2
+    done
+  ) &
 
 {% if smoke_test_marker_enabled | bool %}
   xterm -title SMOKE_READY -geometry 44x8+20+20 -bg '#00ff66' -fg black -e sh -lc \"printf 'SMOKE READY\n'; exec sh\" &

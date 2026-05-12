@@ -9,6 +9,9 @@ import { join } from 'node:path';
 export interface SmokeState {
   publicIp: string;
   accessUrl: string;
+  desktopType?: string;
+  vncUser: string;
+  sshKeyPath: string;
 }
 
 const stateFile = join(__dirname, '../../.smoke-state/state.json');
