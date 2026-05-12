@@ -12,7 +12,11 @@ if (!existsSync(stateFile)) {
 
 const state = JSON.parse(readFileSync(stateFile, 'utf8')) as {
   publicIp: string;
+  novncHttpsPort?: number;
 };
+
+const httpsPort = Number(state.novncHttpsPort ?? 443);
+const baseURL = `https://${state.publicIp}${httpsPort === 443 ? '' : `:${httpsPort}`}`;
 
 export default defineConfig({
   testDir: 'smoke/tests',
@@ -22,7 +26,7 @@ export default defineConfig({
     ['html', { open: 'never', outputFolder: '.smoke-artifacts/report' }]
   ],
   use: {
-    baseURL: `https://${state.publicIp}`,
+    baseURL,
     ignoreHTTPSErrors: true,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'

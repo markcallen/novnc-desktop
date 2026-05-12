@@ -118,6 +118,22 @@ resource "aws_security_group" "smoke" {
     cidr_blocks = [var.https_cidr]
   }
 
+  ingress {
+    description = "HTTP alternate"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.http_cidr]
+  }
+
+  ingress {
+    description = "HTTPS alternate"
+    from_port   = 8443
+    to_port     = 8443
+    protocol    = "tcp"
+    cidr_blocks = [var.https_cidr]
+  }
+
   # tfsec:ignore:aws-ec2-no-public-egress-sgr This ephemeral smoke host must reach package mirrors and Let's Encrypt endpoints.
   egress {
     description = "All outbound"

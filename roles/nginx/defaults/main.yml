@@ -11,5 +11,9 @@ tls_domain: '{{ inventory_hostname }}'
 # git config user.email. If that is also unset, self-signed cert is used.
 letsencrypt_email: ''
 
+# Public HTTP/HTTPS ports served by nginx.
+novnc_http_port: 80
+novnc_https_port: 443
+
 # Must match auth role's auth_service_port.
 auth_service_port: 8898
