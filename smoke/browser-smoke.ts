@@ -29,6 +29,7 @@ interface CanvasActivity {
 }
 
 function die(message: string): never {
+  // eslint-disable-next-line no-console
   console.error(`[smoke] ERROR: ${message}`);
   process.exit(1);
 }
@@ -144,6 +145,7 @@ async function main(): Promise<void> {
   try {
     // Step 1: Load the access URL. The auth service validates the token, sets
     // the HttpOnly cookie, and redirects to vnc.html?autoconnect=1&resize=remote.
+    // eslint-disable-next-line no-console
     console.log(`[smoke] Navigating to access URL...`);
     await page.goto(options.accessUrl, {
       waitUntil: 'domcontentloaded',
@@ -152,13 +154,16 @@ async function main(): Promise<void> {
 
     // After the redirect we should be at vnc.html with autoconnect active.
     // Wait for the canvas to appear and contain rendered desktop content.
+    // eslint-disable-next-line no-console
     console.log(`[smoke] Waiting for VNC canvas activity...`);
     await waitForCanvasActivity(page);
 
+    // eslint-disable-next-line no-console
     console.log(
       `[smoke] Canvas active. Saving screenshot to ${options.screenshot}`
     );
     await page.screenshot({ path: options.screenshot, fullPage: true });
+    // eslint-disable-next-line no-console
     console.log(`[smoke] PASS`);
   } finally {
     await context.close();
