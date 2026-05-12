@@ -13,6 +13,7 @@
     "provision:elementary": "bash smoke/scripts/provision-elementary.sh",
     "provision:elementary:custom-ports": "bash smoke/scripts/provision-elementary-custom-ports.sh",
     "test": "playwright test",
+    "test:unit": "node --test smoke/unit/helpers.test.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prettier": "prettier . --check",

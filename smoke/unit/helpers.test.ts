@@ -6,7 +6,7 @@ import {
   extractActiveWindowName,
   parseTcpPort,
   readActiveWindowName
-} from '../tests/helpers';
+} from '../tests/helpers.ts';
 
 test('parseTcpPort accepts valid ports and buildBaseUrl omits default ports', () => {
   assert.equal(parseTcpPort('443', 'novncHttpsPort'), 443);

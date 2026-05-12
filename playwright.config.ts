@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { readFileSync, existsSync } from 'node:fs';
+import { buildBaseUrl, parseTcpPort } from './smoke/tests/helpers';
 
 const stateFile = '.smoke-state/state.json';
 
@@ -15,8 +16,8 @@ const state = JSON.parse(readFileSync(stateFile, 'utf8')) as {
   novncHttpsPort?: number;
 };
 
-const httpsPort = Number(state.novncHttpsPort ?? 443);
-const baseURL = `https://${state.publicIp}${httpsPort === 443 ? '' : `:${httpsPort}`}`;
+const httpsPort = parseTcpPort(state.novncHttpsPort ?? 443, 'novncHttpsPort');
+const baseURL = buildBaseUrl('https', state.publicIp, httpsPort);
 
 export default defineConfig({
   testDir: 'smoke/tests',
