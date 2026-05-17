@@ -1,0 +1,9 @@
+collections:
+  - ansible.utils
+  - community.general
+
+roles:
+  - name: markcallen.novnc_desktop
+    src: https://github.com/markcallen/novnc-desktop.git
+    scm: git
+    version: v0.1.5

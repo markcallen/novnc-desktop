@@ -28,6 +28,10 @@ variable "ami_description" {
   default     = "noVNC Desktop over HTTPS with Ubuntu 24.04 LTS"
 }
 
+locals {
+  timestamp = formatdate("YYYYMMDD-hhmmss", timestamp())
+}
+
 data "amazon-ami" "ubuntu" {
   filters = {
     name                = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
@@ -42,7 +46,7 @@ data "amazon-ami" "ubuntu" {
 }
 
 source "amazon-ebs" "ubuntu" {
-  ami_name                    = var.ami_name
+  ami_name                    = "${var.ami_name}-${local.timestamp}"
   ami_description             = var.ami_description
   instance_type               = var.instance_type
   region                      = var.aws_region
@@ -64,7 +68,7 @@ source "amazon-ebs" "ubuntu" {
   snapshot_tags = {
     Name      = var.ami_name
     BuildTool = "Packer"
-    BuildDate = timestamp()
+    BuildDate = local.timestamp
   }
 
   # Add tags to the AMI
@@ -72,7 +76,7 @@ source "amazon-ebs" "ubuntu" {
     Name        = var.ami_name
     OS          = "Ubuntu 24.04 LTS"
     BuildTool   = "Packer"
-    BuildDate   = timestamp()
+    BuildDate   = local.timestamp
     Description = var.ami_description
   }
 
@@ -88,7 +92,7 @@ build {
     "source.amazon-ebs.ubuntu"
   ]
 
-  # Step 1: Fix any broken dpkg/apt state before proceeding
+  # Step 1: Fix any broken dpkg/apt state and update system
   provisioner "shell" {
     inline = [
       "set -e",
@@ -97,58 +101,27 @@ build {
       "sudo apt-get update --fix-missing || true",
       "sudo apt-get clean",
       "sudo apt-get autoclean",
-      "echo '=== dpkg/apt cleanup complete ==='"
+      "echo '=== System cleanup complete ==='",
+      "echo '=== Installing Python and core dependencies ==='",
+      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip git curl",
+      "echo '=== Core dependencies installed ===' "
     ]
   }
 
-  # Step 2: Wait for any background apt processes to finish
-  provisioner "shell" {
-    inline = [
-      "set -e",
-      "echo '=== Waiting for any background apt processes ==='",
-      "while sudo lsof /var/lib/apt/lists/lock 2>/dev/null; do sleep 1; done",
-      "while sudo lsof /var/cache/apt/archives/lock 2>/dev/null; do sleep 1; done",
-      "while sudo lsof /var/lib/dpkg/lock* 2>/dev/null; do sleep 1; done",
-      "echo '=== All apt locks released ==='"
+  # Step 3: Run Ansible provisioner using Packer's built-in provisioner
+  provisioner "ansible" {
+    playbook_file        = "${path.root}/packer-playbook.yml"
+    galaxy_file          = "${path.root}/packer-requirements.yml"
+    galaxy_force_install = true
+    extra_arguments = [
+      "--extra-vars", "ansible_python_interpreter=/usr/bin/python3",
+    ]
+    ansible_env_vars = [
+      "ANSIBLE_HOST_KEY_CHECKING=False",
     ]
   }
 
-  # Step 3: Install Ansible and dependencies
-  provisioner "shell" {
-    inline = [
-      "set -e",
-      "echo '=== Installing Ansible ==='",
-      "sudo apt-get update",
-      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ansible",
-      "ansible --version",
-      "echo '=== Ansible installation complete ==='"
-    ]
-  }
-
-  # Step 4: Create destination directory and copy novnc-desktop repository
-  provisioner "shell" {
-    inline = [
-      "mkdir -p /tmp/novnc-desktop"
-    ]
-  }
-
-  provisioner "file" {
-    source      = "${path.root}/"
-    destination = "/tmp/novnc-desktop"
-  }
-
-  # Step 5: Run the Ansible playbook
-  provisioner "shell" {
-    inline = [
-      "set -e",
-      "echo '=== Running Ansible playbook ==='",
-      "cd /tmp/novnc-desktop",
-      "sudo ansible-playbook -i 'localhost,' -c local site.yml -v",
-      "echo '=== Ansible playbook execution complete ==='"
-    ]
-  }
-
-  # Step 6: Clean up and optimize the image
+  # Step 4: Clean up and optimize the image
   provisioner "shell" {
     inline = [
       "set -e",
@@ -157,11 +130,10 @@ build {
       "sudo apt-get autoclean",
       "sudo apt-get autoremove -y",
       "sudo truncate -s 0 /var/log/*log",
-      "sudo rm -rf /tmp/novnc-desktop",
-      "sudo rm -rf /var/tmp/*",
+      "sudo rm -rf /var/tmp/* /tmp/*",
       "history -c",
       "cat /dev/null > ~/.bash_history",
-      "echo '=== Image cleanup complete ==='"
+      "echo '=== Image cleanup complete ===' "
     ]
   }
 }
