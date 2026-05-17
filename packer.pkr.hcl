@@ -66,9 +66,11 @@ source "amazon-ebs" "ubuntu" {
 
   # Add tags to the snapshot
   snapshot_tags = {
-    Name      = var.ami_name
-    BuildTool = "Packer"
-    BuildDate = local.timestamp
+    Name        = var.ami_name
+    BuildTool   = "Packer"
+    BuildDate   = local.timestamp
+    Environment = "test"
+    Project     = "novnc-desktop"
   }
 
   # Add tags to the AMI
@@ -78,6 +80,8 @@ source "amazon-ebs" "ubuntu" {
     BuildTool   = "Packer"
     BuildDate   = local.timestamp
     Description = var.ami_description
+    Environment = "test"
+    Project     = "novnc-desktop"
   }
 
   # SSH configuration
