@@ -125,7 +125,13 @@ build {
     ]
   }
 
-  # Step 4: Copy the novnc-desktop repository to the instance
+  # Step 4: Create destination directory and copy novnc-desktop repository
+  provisioner "shell" {
+    inline = [
+      "mkdir -p /tmp/novnc-desktop"
+    ]
+  }
+
   provisioner "file" {
     source      = "${path.root}/"
     destination = "/tmp/novnc-desktop"
