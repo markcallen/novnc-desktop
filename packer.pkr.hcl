@@ -30,7 +30,7 @@ variable "ami_description" {
 
 data "amazon-ami" "ubuntu" {
   filters = {
-    name                = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*"
+    name                = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
     root-device-type    = "ebs"
     virtualization-type = "hvm"
   }
