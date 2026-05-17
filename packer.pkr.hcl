@@ -131,8 +131,8 @@ build {
       "sudo apt-get autoremove -y",
       "sudo truncate -s 0 /var/log/*log",
       "sudo rm -rf /var/tmp/* /tmp/*",
-      "history -c",
-      "cat /dev/null > ~/.bash_history",
+      "history -c 2>/dev/null || true",
+      "cat /dev/null > ~/.bash_history 2>/dev/null || true",
       "echo '=== Image cleanup complete ===' "
     ]
   }
