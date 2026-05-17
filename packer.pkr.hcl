@@ -127,7 +127,7 @@ build {
 
   # Step 4: Copy the novnc-desktop repository to the instance
   provisioner "file" {
-    source      = "."
+    source      = "${path.root}/"
     destination = "/tmp/novnc-desktop"
   }
 
