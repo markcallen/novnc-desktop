@@ -1,0 +1,6 @@
+---
+- name: Provision noVNC Desktop
+  hosts: all
+  become: true
+  roles:
+    - markcallen.novnc_desktop
