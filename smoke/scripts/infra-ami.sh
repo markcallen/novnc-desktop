@@ -61,7 +61,7 @@ if [[ -z "$AMI_ID" ]]; then
 
   if [[ -z "$AMI_ID" || "$AMI_ID" == "None" ]]; then
     echo "ERROR: No novnc-desktop AMI found with Environment=test and Project=novnc-desktop" >&2
-    echo "Build an AMI first with: pnpm run build-ami.sh" >&2
+    echo "Build an AMI first with: ./build-ami.sh" >&2
     exit 1
   fi
 fi

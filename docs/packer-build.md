@@ -61,34 +61,22 @@ The Packer configuration (`packer.pkr.hcl`) performs these steps:
 - Uses the latest Ubuntu 24.04 LTS AMI from Canonical
 - Automatically discovers the newest available image
 
-### 2. **Fix dpkg/apt State**
+### 2. **Fix dpkg/apt State and Install Dependencies**
 
 - Runs `dpkg --configure -a` to resolve any interrupted package configurations
 - Cleans apt cache and removes stale locks
+- Installs Python 3, pip, git, and curl (required for Ansible to run)
 - This prevents the "E: dpkg was interrupted" error that was causing failures
 
-### 3. **Wait for Background Processes**
+### 3. **Run Ansible Provisioner**
 
-- Ensures all apt locks are released before proceeding
-- Prevents race conditions during package installation
+- Uses Packer's built-in `ansible` provisioner running on the build host
+- Connects to the EC2 instance over SSH as the `ubuntu` user
+- Installs Galaxy requirements from `packer-requirements.yml` (pins `markcallen.novnc_desktop` role)
+- Executes `packer-playbook.yml` which applies the `markcallen.novnc_desktop` role
+- Sets `ansible_python_interpreter=/usr/bin/python3` to use the system Python
 
-### 4. **Install Ansible**
-
-- Installs Ansible in the build instance
-- Verifies the installation
-
-### 5. **Copy Repository**
-
-- Copies the entire novnc-desktop repository to the instance
-- Includes all roles, playbooks, and configuration
-
-### 6. **Run Ansible Playbook**
-
-- Executes `site.yml` with `localhost` as the target
-- Uses local connection mode (no SSH needed)
-- Runs with verbose output for debugging
-
-### 7. **Optimize Image**
+### 4. **Optimize Image**
 
 - Cleans up apt cache and temporary files
 - Removes build artifacts

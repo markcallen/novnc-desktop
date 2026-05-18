@@ -10,6 +10,7 @@
     "infra:ami": "bash smoke/scripts/infra-ami.sh",
     "infra:status": "bash smoke/scripts/infra-status.sh",
     "infra:down": "bash smoke/scripts/infra-down.sh",
+    "build:ami": "./build-ami.sh",
     "provision:openbox": "bash smoke/scripts/provision-openbox.sh",
     "provision:elementary": "bash smoke/scripts/provision-elementary.sh",
     "provision:elementary:custom-ports": "bash smoke/scripts/provision-elementary-custom-ports.sh",

@@ -47,7 +47,7 @@ aws configure
 ### Build with Defaults
 
 ```bash
-cd /home/marka/src/novnc-desktop
+cd /path/to/novnc-desktop
 ./build-ami.sh
 ```
 
@@ -141,7 +141,7 @@ sudo systemctl status nginx
 ## Files Created
 
 ```
-/home/marka/src/novnc-desktop/
+novnc-desktop/
 ├── packer.pkr.hcl           # Packer configuration
 ├── build-ami.sh             # Build script
 └── docs/

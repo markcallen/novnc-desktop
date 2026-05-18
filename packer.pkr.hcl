@@ -112,7 +112,7 @@ build {
     ]
   }
 
-  # Step 3: Run Ansible provisioner using Packer's built-in provisioner
+  # Step 2: Run Ansible provisioner using Packer's built-in provisioner
   provisioner "ansible" {
     playbook_file        = "${path.root}/packer-playbook.yml"
     galaxy_file          = "${path.root}/packer-requirements.yml"
@@ -125,7 +125,7 @@ build {
     ]
   }
 
-  # Step 4: Clean up and optimize the image
+  # Step 3: Clean up and optimize the image
   provisioner "shell" {
     inline = [
       "set -e",
