@@ -33,6 +33,3 @@ smoke/ec2/terraform.tfvars
 # playwright
 playwright-report/
 test-results/
-
-# examples (kept on disk, not tracked)
-examples/
