@@ -48,7 +48,7 @@ Or manually with Packer:
 packer build \
   -var 'aws_region=us-west-2' \
   -var 'instance_type=t3.large' \
-  -var 'ami_name=novnc-desktop-custom' \
+  -var 'ami_name_prefix=novnc-desktop-custom' \
   packer.pkr.hcl
 ```
 
@@ -87,13 +87,15 @@ The Packer configuration (`packer.pkr.hcl`) performs these steps:
 
 Edit `packer.pkr.hcl` or pass variables via the `-var` flag:
 
-| Variable           | Default                                          | Description                                                                        |
-| ------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `aws_region`       | `us-east-1`                                      | AWS region for the build                                                           |
-| `instance_type`    | `t3.medium`                                      | EC2 instance type (t3.small for faster/cheaper builds, t3.large for faster builds) |
-| `root_volume_size` | `20`                                             | Root volume size in GB                                                             |
-| `ami_name`         | `novnc-desktop-ubuntu-24.04`                     | Name of the output AMI                                                             |
-| `ami_description`  | `noVNC Desktop over HTTPS with Ubuntu 24.04 LTS` | Description for the AMI                                                            |
+| Variable           | Default                      | Description                                                                                          |
+| ------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `aws_region`       | `us-east-1`                  | AWS region for the build                                                                             |
+| `instance_type`    | `t3.medium`                  | EC2 instance type (t3.small for faster/cheaper builds, t3.large for faster builds)                   |
+| `root_volume_size` | `20`                         | Root volume size in GB                                                                               |
+| `ami_name_prefix`  | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary AMI names                                              |
+| `use_certbot`      | `false`                      | Run certbot at bake time; leave false for public AMIs that use user-data for TLS                     |
+| `ami_public`       | `false`                      | Set launch permissions to allow all AWS accounts (`ami_groups = ["all"]`)                            |
+| `ami_environment`  | `test`                       | Value for the `Environment` tag; use `test` for smoke-discoverable builds, `production` for releases |
 
 ## Instance Type Selection
 
@@ -215,7 +217,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
-          AMI_NAME: novnc-desktop-${{ github.ref_name }}-${{ github.run_number }}
+          AMI_NAME_PREFIX: novnc-desktop-${{ github.ref_name }}-${{ github.run_number }}
 ```
 
 ## Additional Resources

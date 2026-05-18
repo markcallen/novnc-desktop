@@ -34,8 +34,7 @@
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
-- name: Enable and start novnc-desktop meta-service
+- name: Enable novnc-desktop meta-service
   ansible.builtin.systemd:
     name: novnc-desktop.service
     enabled: true
-    state: started

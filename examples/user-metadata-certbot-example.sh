@@ -8,29 +8,26 @@
 # 3. Restarts the service with the new configuration
 #
 # Usage:
-# Create a wrapper script with environment variables, then pass as user data:
-#   cat > user-data.sh <<'EOF'
+# Create a user-data script by prepending your environment variables and
+# appending this file's contents. Do NOT use command substitution inside a
+# quoted heredoc — the file will not be present on the EC2 instance.
+#
+#   cat > user-data.sh <<EOF
 #   #!/bin/bash
 #   export CERTBOT_DOMAIN=myapp.example.com
 #   export CERTBOT_EMAIL=admin@example.com
 #   export NOVNC_PORT=443
 #   export NOVNC_UNSECURED_PORT=80
-#   # Include this script
-#   $(cat user-metadata-certbot-example.sh)
 #   EOF
+#   cat examples/user-metadata-certbot-example.sh >> user-data.sh
 #
 # Then launch:
 #   aws ec2 run-instances \
 #     --image-id ami-xxxxx \
 #     --user-data file://user-data.sh
 #
-# Or via EC2 console, set environment variables before the script:
-#   #!/bin/bash
-#   export CERTBOT_DOMAIN=myapp.example.com
-#   export CERTBOT_EMAIL=admin@example.com
-#   export NOVNC_PORT=443
-#   export NOVNC_UNSECURED_PORT=80
-#   # ... paste contents of this script ...
+# Or via EC2 console, paste the env-var block followed by this script's
+# contents directly into the User data field.
 
 set -euo pipefail
 
@@ -65,6 +62,9 @@ log "HTTP Port (fallback): $NOVNC_UNSECURED_PORT"
 # Step 1: Stop novnc-desktop stack so port 80 is free for certbot standalone mode
 log "Stopping $NOVNC_SERVICE_NAME to release port 80 for certbot..."
 systemctl stop "$NOVNC_SERVICE_NAME" || true
+
+# Ensure the stack is always restarted even if a later step fails
+trap 'log "Restoring $NOVNC_SERVICE_NAME after exit..."; systemctl start "$NOVNC_SERVICE_NAME" || true' EXIT
 
 # Step 2: Install certbot and certbot DNS plugin(s) if needed
 log "Installing certbot..."
@@ -159,10 +159,10 @@ log "Setting up automatic certificate renewal..."
 RENEWAL_HOOK_DIR="/etc/letsencrypt/renewal-hooks/post"
 mkdir -p "$RENEWAL_HOOK_DIR"
 
-cat > "$RENEWAL_HOOK_DIR/novnc-restart.sh" << 'HOOK_EOF'
+cat > "$RENEWAL_HOOK_DIR/novnc-restart.sh" << HOOK_EOF
 #!/bin/bash
 # Restart novnc-desktop meta-service after certificate renewal
-systemctl restart novnc-desktop || logger -t novnc-certbot "Failed to restart novnc-desktop after cert renewal"
+systemctl restart ${NOVNC_SERVICE_NAME} || logger -t novnc-certbot "Failed to restart ${NOVNC_SERVICE_NAME} after cert renewal"
 HOOK_EOF
 
 chmod +x "$RENEWAL_HOOK_DIR/novnc-restart.sh"

@@ -34,6 +34,12 @@ variable "ami_public" {
   default     = false
 }
 
+variable "ami_environment" {
+  type        = string
+  description = "Value for the Environment tag on built AMIs. Use 'test' (default) for smoke-discoverable AMIs; use 'production' for public release builds."
+  default     = "test"
+}
+
 locals {
   timestamp = formatdate("YYYYMMDD-hhmmss", timestamp())
 }
@@ -61,7 +67,7 @@ source "amazon-ebs" "openbox" {
   associate_public_ip_address = true
   ebs_optimized               = true
 
-  ami_users = var.ami_public ? ["all"] : []
+  ami_groups = var.ami_public ? ["all"] : []
 
   launch_block_device_mappings {
     device_name           = "/dev/sda1"
@@ -74,7 +80,7 @@ source "amazon-ebs" "openbox" {
     Name        = "${var.ami_name_prefix}-openbox"
     BuildTool   = "Packer"
     BuildDate   = local.timestamp
-    Environment = "production"
+    Environment = var.ami_environment
     Project     = "novnc-desktop"
     Variant     = "openbox"
   }
@@ -85,7 +91,7 @@ source "amazon-ebs" "openbox" {
     BuildTool   = "Packer"
     BuildDate   = local.timestamp
     Description = "noVNC Desktop (Openbox) over HTTPS with Ubuntu 24.04 LTS"
-    Environment = "production"
+    Environment = var.ami_environment
     Project     = "novnc-desktop"
     Variant     = "openbox"
   }
@@ -104,7 +110,7 @@ source "amazon-ebs" "elementary" {
   associate_public_ip_address = true
   ebs_optimized               = true
 
-  ami_users = var.ami_public ? ["all"] : []
+  ami_groups = var.ami_public ? ["all"] : []
 
   launch_block_device_mappings {
     device_name           = "/dev/sda1"
@@ -117,7 +123,7 @@ source "amazon-ebs" "elementary" {
     Name        = "${var.ami_name_prefix}-elementary"
     BuildTool   = "Packer"
     BuildDate   = local.timestamp
-    Environment = "production"
+    Environment = var.ami_environment
     Project     = "novnc-desktop"
     Variant     = "elementary"
   }
@@ -128,7 +134,7 @@ source "amazon-ebs" "elementary" {
     BuildTool   = "Packer"
     BuildDate   = local.timestamp
     Description = "noVNC Desktop (Elementary) over HTTPS with Ubuntu 24.04 LTS"
-    Environment = "production"
+    Environment = var.ami_environment
     Project     = "novnc-desktop"
     Variant     = "elementary"
   }

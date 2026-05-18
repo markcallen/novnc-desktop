@@ -157,3 +157,8 @@
         creates: '/etc/letsencrypt/live/{{ novnc_tls_domain }}/fullchain.pem'
       register: novnc_certbot_out
       changed_when: novnc_certbot_out.rc == 0
+
+- name: Start novnc-desktop meta-service
+  ansible.builtin.systemd:
+    name: novnc-desktop.service
+    state: started

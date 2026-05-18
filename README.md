@@ -228,7 +228,7 @@ Automation tools and user-data scripts should target `novnc-desktop` rather than
 
 Public AMIs for openbox and elementary variants are available for each release. See the [GitHub Releases](https://github.com/markcallen/novnc-desktop/releases) page for current AMI IDs by region.
 
-AMIs are built with `use_certbot: false` — TLS certificates are not embedded at build time. Instead, pass a user-data script at launch to obtain a Let's Encrypt certificate for your domain.
+AMIs are built with `use_certbot: false` — a self-signed TLS certificate is baked in at build time, but no Let's Encrypt certificate is embedded. Pass a user-data script at launch to replace the self-signed cert with a real certificate for your domain.
 
 ### Launch workflow
 
