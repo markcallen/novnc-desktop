@@ -23,3 +23,19 @@
     name: novnc.service
     enabled: true
     state: restarted
+
+- name: Install novnc-desktop meta-service unit
+  ansible.builtin.template:
+    src: novnc-desktop.service.j2
+    dest: /etc/systemd/system/novnc-desktop.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start novnc-desktop meta-service
+  ansible.builtin.systemd:
+    name: novnc-desktop.service
+    enabled: true
+    state: started
