@@ -80,7 +80,22 @@ ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook site.yml \
   -i "$PUBLIC_IP," \
   -u "$VNC_USER" \
   --private-key "$SSH_KEY_PATH" \
-  -e "desktop_type=$DESKTOP_TYPE smoke_test_marker_enabled=true novnc_http_port=$NOVNC_HTTP_PORT novnc_https_port=$NOVNC_HTTPS_PORT"
+  -e "public_ip=$PUBLIC_IP desktop_type=$DESKTOP_TYPE smoke_test_marker_enabled=true novnc_http_port=$NOVNC_HTTP_PORT novnc_https_port=$NOVNC_HTTPS_PORT"
+
+# ---------------------------------------------------------------------------
+# 2b. Update novnc-auth config with public IP (based on devbox.sh pattern)
+# ---------------------------------------------------------------------------
+echo "[provision:$DESKTOP_TYPE] Updating novnc-auth base URL to https://$PUBLIC_IP..."
+CFG="/etc/novnc-auth/config.json"
+PY_CMD="import json; c=json.load(open('${CFG}')); c['base_url']='https://${PUBLIC_IP}'; f=open('${CFG}','w'); json.dump(c,f,indent=2); f.write('\n'); f.close()"
+# shellcheck disable=SC2029
+ssh \
+  -o StrictHostKeyChecking=no \
+  -i "$SSH_KEY_PATH" \
+  "$VNC_USER@$PUBLIC_IP" \
+  "sudo python3 -c \"${PY_CMD}\" && sudo systemctl restart novnc-auth.service" && \
+  echo "[provision:$DESKTOP_TYPE] Base URL set to https://$PUBLIC_IP" || \
+  echo "[provision:$DESKTOP_TYPE] Warning: Could not update base URL; novnc-desktop-url may show incorrect URL"
 
 # ---------------------------------------------------------------------------
 # 3. Fetch a time-limited desktop access URL

@@ -70,3 +70,9 @@ variable "novnc_https_port" {
   type        = number
   default     = 443
 }
+
+variable "ami_id" {
+  description = "Optional AMI ID to launch from. If not provided, uses the latest Ubuntu 24.04 AMI."
+  type        = string
+  default     = ""
+}
