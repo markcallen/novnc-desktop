@@ -10,7 +10,7 @@ cd "$SCRIPT_DIR"
 # Configuration
 AWS_REGION="${AWS_REGION:-us-east-1}"
 INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
-AMI_NAME="${AMI_NAME:-novnc-desktop-ubuntu-24.04-$(date +%s)}"
+AMI_NAME="${AMI_NAME:-novnc-desktop-ubuntu-24.04}"
 
 echo "=========================================="
 echo "Building noVNC Desktop AMI"
