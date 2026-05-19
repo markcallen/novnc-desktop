@@ -166,8 +166,45 @@ cat > "$STATE_FILE" <<EOF
 }
 EOF
 
-echo ""
 echo "[$LABEL] State saved to $STATE_FILE"
+
+# ---------------------------------------------------------------------------
+# AMI content verification (AC-AMI-02, AC-AMI-03, AC-AMI-04)
+# Confirm required commands and services are baked into the AMI before any
+# Ansible post-launch run. Failures here indicate a broken AMI build.
+# ---------------------------------------------------------------------------
+echo ""
+echo "[$LABEL] Verifying AMI contents (pre-Ansible)..."
+
+SSH_OPTS=(-o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY_PATH")
+AMI_VERIFY_PASS=true
+
+for cmd in novnc-desktop-url novnc-setup-tls; do
+  if ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "test -x /usr/local/bin/$cmd" 2>/dev/null; then
+    echo "[$LABEL]   [PASS] /usr/local/bin/$cmd present (AC-AMI-02/03)"
+  else
+    echo "[$LABEL]   [FAIL] /usr/local/bin/$cmd missing — AMI was not built with all roles" >&2
+    AMI_VERIFY_PASS=false
+  fi
+done
+
+for svc in novnc-auth.service nginx novnc.service novnc-desktop.service; do
+  if ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "systemctl is-active --quiet $svc" 2>/dev/null; then
+    echo "[$LABEL]   [PASS] $svc active (AC-AMI-04)"
+  else
+    echo "[$LABEL]   [FAIL] $svc not active — AMI services did not start on boot" >&2
+    AMI_VERIFY_PASS=false
+  fi
+done
+
+if [[ "$AMI_VERIFY_PASS" == "false" ]]; then
+  echo ""
+  echo "[$LABEL] ERROR: AMI content verification failed. Rebuild the AMI with:" >&2
+  echo "  AMI_PUBLIC=true AMI_ENVIRONMENT=production ./build-ami.sh" >&2
+  exit 1
+fi
+
+echo "[$LABEL] AMI content verification passed."
 echo ""
 echo "Desktop: https://$PUBLIC_IP:$HTTPS_PORT"
 echo ""
