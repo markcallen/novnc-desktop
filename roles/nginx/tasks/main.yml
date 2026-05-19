@@ -158,6 +158,14 @@
       register: novnc_certbot_out
       changed_when: novnc_certbot_out.rc == 0
 
+- name: Install novnc-setup-tls script
+  ansible.builtin.copy:
+    src: novnc-setup-tls
+    dest: /usr/local/bin/novnc-setup-tls
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Start novnc-desktop meta-service
   ansible.builtin.systemd:
     name: novnc-desktop.service

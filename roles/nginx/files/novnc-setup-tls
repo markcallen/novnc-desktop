@@ -1,0 +1,107 @@
+#!/bin/bash
+# novnc-setup-tls — obtain a Let's Encrypt certificate and wire it into the
+# novnc-desktop stack on an AMI that was built with use_certbot=false.
+#
+# certbot, openssl, and nginx are already installed on the AMI; this script
+# only needs CERTBOT_DOMAIN to be set before it is called.
+#
+# Usage (EC2 user-data or interactive):
+#   export CERTBOT_DOMAIN=myapp.example.com
+#   export CERTBOT_EMAIL=admin@example.com   # optional
+#   sudo /usr/local/bin/novnc-setup-tls
+#
+# Environment variables:
+#   CERTBOT_DOMAIN   (required) Public domain pointing to this instance.
+#   CERTBOT_EMAIL    Email for Let's Encrypt expiry notices.
+#                    Default: admin@example.com
+#   NOVNC_HTTPS_PORT HTTPS port nginx listens on. Must match the port the AMI
+#                    was provisioned with. Default: 443
+#   NOVNC_SERVICE    systemd service name. Default: novnc-desktop
+
+set -euo pipefail
+
+CERTBOT_DOMAIN="${CERTBOT_DOMAIN:-}"
+CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@example.com}"
+NOVNC_HTTPS_PORT="${NOVNC_HTTPS_PORT:-443}"
+NOVNC_SERVICE="${NOVNC_SERVICE:-novnc-desktop}"
+
+AUTH_CONFIG="/etc/novnc-auth/config.json"
+LOG_FILE="/var/log/novnc-setup-tls.log"
+
+log() { echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
+die() { log "ERROR: $*"; exit 1; }
+
+[[ "$(id -u)" -eq 0 ]] || die "This script must be run as root"
+[[ -n "$CERTBOT_DOMAIN" ]] || die "CERTBOT_DOMAIN is required"
+
+log "=== novnc-setup-tls starting ==="
+log "Domain:     $CERTBOT_DOMAIN"
+log "HTTPS port: $NOVNC_HTTPS_PORT"
+log "Service:    $NOVNC_SERVICE"
+
+# The certbot nginx plugin modifies the running nginx config without requiring
+# services to stop. Ensure nginx is up before certbot runs.
+if ! systemctl is-active --quiet nginx; then
+  log "nginx is not running — starting it..."
+  systemctl start nginx
+fi
+
+# Obtain (or renew) the certificate. certbot --nginx also patches
+# /etc/nginx/sites-available/novnc to replace the self-signed cert paths with
+# the Let's Encrypt paths and reloads nginx.
+log "Running certbot (nginx plugin)..."
+certbot --nginx \
+  --non-interactive \
+  --agree-tos \
+  --email "$CERTBOT_EMAIL" \
+  --cert-name "$CERTBOT_DOMAIN" \
+  -d "$CERTBOT_DOMAIN" 2>&1 | tee -a "$LOG_FILE"
+
+# Update the auth service base URL so novnc-desktop-url generates correct links.
+log "Updating auth service configuration..."
+BASE_URL="https://$CERTBOT_DOMAIN"
+[[ "$NOVNC_HTTPS_PORT" != "443" ]] && BASE_URL="${BASE_URL}:${NOVNC_HTTPS_PORT}"
+
+python3 - <<PYEOF
+import json, os, stat
+
+path = "$AUTH_CONFIG"
+with open(path) as fh:
+    data = json.load(fh)
+
+data["base_url"] = "$BASE_URL"
+
+tmp = path + ".tmp"
+with open(tmp, "w") as fh:
+    json.dump(data, fh, indent=2)
+    fh.write("\n")
+
+# Preserve ownership and permissions of the original file.
+st = os.stat(path)
+os.chmod(tmp, stat.S_IMODE(st.st_mode))
+os.chown(tmp, st.st_uid, st.st_gid)
+os.replace(tmp, path)
+print("base_url updated to $BASE_URL")
+PYEOF
+
+# Restart novnc-auth so it reloads config.json with the new base_url.
+log "Restarting novnc-auth..."
+systemctl restart novnc-auth
+
+# Install a post-renewal hook so nginx picks up renewed certs automatically
+# and novnc-auth restarts to stay in sync.
+log "Installing certbot renewal hook..."
+HOOK_DIR="/etc/letsencrypt/renewal-hooks/post"
+mkdir -p "$HOOK_DIR"
+cat > "$HOOK_DIR/novnc-renew.sh" <<'HOOK'
+#!/bin/bash
+# Reload nginx and restart novnc-auth after certbot renews the certificate.
+systemctl reload nginx || true
+systemctl restart novnc-auth || true
+logger -t novnc-certbot "Certificate renewed — nginx reloaded, novnc-auth restarted"
+HOOK
+chmod +x "$HOOK_DIR/novnc-renew.sh"
+
+log "=== novnc-setup-tls complete ==="
+log "Run: sudo novnc-desktop-url"
+log "     to get your signed HTTPS access URL."
