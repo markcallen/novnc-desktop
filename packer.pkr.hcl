@@ -40,6 +40,18 @@ variable "ami_environment" {
   default     = "test"
 }
 
+variable "novnc_http_port" {
+  type        = number
+  description = "HTTP port nginx listens on. Must be 80 for Let's Encrypt HTTP-01 certificate validation. Use a non-standard port (e.g. 8080) only when certbot is not needed."
+  default     = 80
+}
+
+variable "novnc_https_port" {
+  type        = number
+  description = "HTTPS port nginx listens on. Standard is 443; use 8443 for non-privileged or firewall-friendly deployments."
+  default     = 443
+}
+
 locals {
   timestamp = formatdate("YYYYMMDD-hhmmss", timestamp())
 }
@@ -182,7 +194,7 @@ build {
     galaxy_file          = "${path.root}/packer-requirements.yml"
     galaxy_force_install = true
     extra_arguments = [
-      "--extra-vars", "ansible_python_interpreter=/usr/bin/python3 desktop_type=openbox use_certbot=${var.use_certbot}",
+      "--extra-vars", "ansible_python_interpreter=/usr/bin/python3 desktop_type=openbox use_certbot=${var.use_certbot} novnc_http_port=${var.novnc_http_port} novnc_https_port=${var.novnc_https_port}",
     ]
     ansible_env_vars = [
       "ANSIBLE_HOST_KEY_CHECKING=False",
@@ -198,7 +210,7 @@ build {
     galaxy_file          = "${path.root}/packer-requirements.yml"
     galaxy_force_install = true
     extra_arguments = [
-      "--extra-vars", "ansible_python_interpreter=/usr/bin/python3 desktop_type=elementary use_certbot=${var.use_certbot}",
+      "--extra-vars", "ansible_python_interpreter=/usr/bin/python3 desktop_type=elementary use_certbot=${var.use_certbot} novnc_http_port=${var.novnc_http_port} novnc_https_port=${var.novnc_https_port}",
     ]
     ansible_env_vars = [
       "ANSIBLE_HOST_KEY_CHECKING=False",

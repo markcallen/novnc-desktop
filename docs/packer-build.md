@@ -8,7 +8,15 @@ This guide explains how to build an AWS AMI for the noVNC Desktop using Packer.
 2. **AWS Credentials**: Configure AWS credentials with permissions to create AMIs and EC2 instances
    - Set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as environment variables, or
    - Use `aws configure` to set up your AWS CLI profile
-3. **AWS Permissions**: The IAM user/role must have permissions for:
+3. **Public AMIs — Disable Block Public Access**: If you intend to build public AMIs (`AMI_PUBLIC=true`), AWS requires that "Block Public Access for AMIs" is disabled at the account level in each target region. Run this once per region before building:
+
+   ```bash
+   aws ec2 disable-image-block-public-access --region us-east-1
+   ```
+
+   Without this, Packer will build and then deregister the AMI with the error `OperationNotPermitted: block public access for AMIs is enabled`.
+
+4. **AWS Permissions**: The IAM user/role must have permissions for:
    - `ec2:CreateImage`
    - `ec2:CreateSnapshot`
    - `ec2:DescribeImages`
@@ -96,6 +104,12 @@ Edit `packer.pkr.hcl` or pass variables via the `-var` flag:
 | `use_certbot`      | `false`                      | Run certbot at bake time; leave false for public AMIs that use user-data for TLS                     |
 | `ami_public`       | `false`                      | Set launch permissions to allow all AWS accounts (`ami_groups = ["all"]`)                            |
 | `ami_environment`  | `test`                       | Value for the `Environment` tag; use `test` for smoke-discoverable builds, `production` for releases |
+| `novnc_http_port`  | `80`                         | HTTP port nginx listens on. Must be `80` when using Let's Encrypt (HTTP-01 challenge)                |
+| `novnc_https_port` | `443`                        | HTTPS port nginx listens on. Use `8443` for non-standard deployments                                 |
+
+See [custom-ports.md](./custom-ports.md) for a full guide on building and launching AMIs on ports 8080/8443 with and without certbot.
+
+See [route53-iam-setup.md](./route53-iam-setup.md) for the IAM role required to run `novnc-setup-tls` with Let's Encrypt on any instance launched from a public AMI.
 
 ## Instance Type Selection
 

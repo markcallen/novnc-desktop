@@ -7,7 +7,8 @@ via EC2 user-data.
 ## Prerequisites
 
 - AWS CLI v2 installed and configured (`aws configure`)
-- A domain name with DNS you control (required for TLS via Let's Encrypt)
+- A domain name with a public hosted zone in Route53 (required for TLS via Let's Encrypt)
+- An IAM instance profile with Route53 permissions — see [route53-iam-setup.md](./route53-iam-setup.md)
 - The AMI ID for your region — see [GitHub Releases](https://github.com/markcallen/novnc-desktop/releases)
 
 ## Required IAM Permissions
@@ -93,19 +94,15 @@ aws ec2 authorize-security-group-ingress \
   --group-id "$SG_ID" \
   --protocol tcp --port 22 --cidr "$MY_IP"
 
-# HTTP — needed for Let's Encrypt certificate validation
-aws ec2 authorize-security-group-ingress \
-  --group-id "$SG_ID" \
-  --protocol tcp --port 80 --cidr 0.0.0.0/0
-
 # HTTPS — noVNC desktop access
 aws ec2 authorize-security-group-ingress \
   --group-id "$SG_ID" \
   --protocol tcp --port 443 --cidr 0.0.0.0/0
 ```
 
-> After certificate validation succeeds you can revoke the port 80 rule if you no
-> longer need HTTP.
+> Port 80 is **not** required. Certificate validation uses DNS-01 via Route53,
+> which proves domain ownership through a DNS TXT record rather than an HTTP
+> request to port 80.
 
 ## Step 3 — Create an SSH Key Pair
 
@@ -135,17 +132,17 @@ EOF
 cat examples/user-metadata-certbot-example.sh >> user-data.sh
 ```
 
-> **DNS must be configured before launch.** Create an `A` record pointing
-> `myapp.example.com` to the instance's public IP. Because the IP is only known
-> after launch, the typical workflow is:
+> **DNS must be configured before `novnc-setup-tls` runs.** Create an `A`
+> record pointing `myapp.example.com` to the instance's public IP. Because the
+> IP is only known after launch, the recommended workflow is to use an Elastic IP
+> — allocate it before launch, create the DNS record, then associate the IP after
+> launch. See [Using an Elastic IP](#using-an-elastic-ip-recommended-for-production).
 >
-> 1. Launch without user-data first to get the public IP.
-> 2. Create the DNS record.
-> 3. Wait for propagation (`dig +short myapp.example.com`).
-> 4. SSH in and run `sudo CERTBOT_DOMAIN=myapp.example.com /usr/local/bin/novnc-setup-tls`.
+> Alternatively:
 >
-> Alternatively, use an Elastic IP — allocate it before launch and assign it,
-> then create the DNS record pointing to that IP.
+> 1. Launch without user-data to get the public IP.
+> 2. Create the DNS record and wait for propagation (`dig +short myapp.example.com`).
+> 3. SSH in and run `sudo CERTBOT_DOMAIN=myapp.example.com /usr/local/bin/novnc-setup-tls`.
 
 ## Step 5 — Launch the Instance
 
@@ -160,6 +157,7 @@ INSTANCE_ID=$(aws ec2 run-instances \
   --security-group-ids "$SG_ID" \
   --subnet-id "$SUBNET_ID" \
   --associate-public-ip-address \
+  --iam-instance-profile Name=novnc-desktop-certbot \
   --user-data file://user-data.sh \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=novnc-desktop}]' \
   --query 'Instances[0].InstanceId' \
@@ -268,6 +266,10 @@ sudo CERTBOT_DOMAIN=myapp.example.com \
 sudo novnc-desktop-url
 ```
 
+The `novnc-setup-tls` script requires the instance to have the
+`novnc-desktop-certbot` IAM role attached. See
+[route53-iam-setup.md](./route53-iam-setup.md).
+
 ## Troubleshooting
 
 ### Certificate acquisition fails
@@ -275,7 +277,8 @@ sudo novnc-desktop-url
 Ensure:
 
 - The DNS `A` record for your domain resolves to the instance's public IP (`dig +short myapp.example.com`).
-- Port 80 is open in the security group for inbound traffic from `0.0.0.0/0`.
+- The domain's hosted zone exists in Route53 in the same AWS account (`aws route53 list-hosted-zones`).
+- The instance has the `novnc-desktop-certbot` IAM role attached.
 - The instance is fully started (`aws ec2 describe-instance-status`).
 
 ### novnc-desktop service is not active

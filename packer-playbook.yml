@@ -2,5 +2,19 @@
 - name: Provision noVNC Desktop
   hosts: all
   become: true
+
+  pre_tasks:
+    - name: Remove conflicting Google Chrome apt source files
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/google-chrome.list
+        - /etc/apt/sources.list.d/dl_google_com_linux_chrome_deb.list
+
   roles:
+    - desktop
+    - vnc
     - novnc
+    - auth
+    - nginx

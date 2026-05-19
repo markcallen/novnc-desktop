@@ -9,6 +9,7 @@
       - ufw
       - certbot
       - python3-certbot-nginx
+      - python3-certbot-dns-route53
     state: present
 
 - name: Set TLS domain fact
@@ -29,15 +30,6 @@
             true
           )
         | trim
-      }}
-  when: use_certbot | bool
-
-- name: Evaluate certbot port support
-  ansible.builtin.set_fact:
-    novnc_certbot_supported_ports: >-
-      {{
-        (novnc_http_port | int) == 80 and
-        (novnc_https_port | int) == 443
       }}
   when: use_certbot | bool
 
@@ -63,8 +55,7 @@
             novnc_resolved_ip | default('') != '' and
             not (novnc_resolved_ip | ansible.utils.ipaddr('private')) and
             not (novnc_resolved_ip | ansible.utils.ipaddr('loopback')) and
-            novnc_letsencrypt_email | default('') | length > 0 and
-            novnc_certbot_supported_ports | default(false)
+            novnc_letsencrypt_email | default('') | length > 0
           }}
 
     - name: Report certbot viability
@@ -73,8 +64,8 @@
           DNS lookup for {{ novnc_tls_domain }}:
           {% if novnc_dns_lookup.rc == 0 %}resolved to {{ novnc_resolved_ip }}{% else %}failed{% endif %},
           email: {{ novnc_letsencrypt_email | default('not set') }},
-          ports supported: {{ novnc_certbot_supported_ports | default(false) }}
-          (http={{ novnc_http_port }}, https={{ novnc_https_port }}),
+          ports: http={{ novnc_http_port }} https={{ novnc_https_port }},
+          method: {{ 'HTTP-01' if (novnc_http_port | int) == 80 and (novnc_https_port | int) == 443 else 'DNS-01 (Route53)' }},
           certbot viable: {{ novnc_certbot_viable }}
 
 - name: Set novnc_certbot_viable to false when certbot is disabled
@@ -144,10 +135,15 @@
     enabled: true
     state: started
 
-- name: Obtain Let's Encrypt certificate via certbot
-  when: novnc_certbot_viable | default(false) | bool
+# HTTP-01 via the nginx plugin — only viable on standard ports 80/443.
+# certbot --nginx patches the nginx config automatically.
+- name: Obtain Let's Encrypt certificate via certbot (HTTP-01)
+  when:
+    - novnc_certbot_viable | default(false) | bool
+    - (novnc_http_port | int) == 80
+    - (novnc_https_port | int) == 443
   block:
-    - name: Run certbot (nginx plugin)
+    - name: Run certbot (nginx plugin, HTTP-01)
       ansible.builtin.command: >
         certbot --nginx -n
         -d {{ novnc_tls_domain }}
@@ -157,6 +153,40 @@
         creates: '/etc/letsencrypt/live/{{ novnc_tls_domain }}/fullchain.pem'
       register: novnc_certbot_out
       changed_when: novnc_certbot_out.rc == 0
+
+# DNS-01 via the Route53 plugin — works on any port combination.
+# The build host must have IAM permissions for Route53 (route53:ListHostedZones,
+# route53:GetChange, route53:ChangeResourceRecordSets).
+# certonly does not touch the nginx config, so we patch it manually.
+- name: Obtain Let's Encrypt certificate via certbot (DNS-01 / Route53)
+  when:
+    - novnc_certbot_viable | default(false) | bool
+    - (novnc_http_port | int) != 80 or (novnc_https_port | int) != 443
+  block:
+    - name: Run certbot (dns-route53 plugin, DNS-01)
+      ansible.builtin.command: >
+        certbot certonly --dns-route53 -n
+        -d {{ novnc_tls_domain }}
+        -m {{ novnc_letsencrypt_email }}
+        --agree-tos
+      args:
+        creates: '/etc/letsencrypt/live/{{ novnc_tls_domain }}/fullchain.pem'
+      register: novnc_certbot_out
+      changed_when: novnc_certbot_out.rc == 0
+
+    - name: Point nginx at the Let's Encrypt certificate
+      ansible.builtin.replace:
+        path: /etc/nginx/sites-available/novnc
+        regexp: 'ssl_certificate\s+/etc/nginx/ssl/novnc\.crt;'
+        replace: 'ssl_certificate     /etc/letsencrypt/live/{{ novnc_tls_domain }}/fullchain.pem;'
+      notify: Reload nginx
+
+    - name: Point nginx at the Let's Encrypt private key
+      ansible.builtin.replace:
+        path: /etc/nginx/sites-available/novnc
+        regexp: 'ssl_certificate_key\s+/etc/nginx/ssl/novnc\.key;'
+        replace: 'ssl_certificate_key /etc/letsencrypt/live/{{ novnc_tls_domain }}/privkey.pem;'
+      notify: Reload nginx
 
 - name: Install novnc-setup-tls script
   ansible.builtin.copy:

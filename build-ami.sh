@@ -16,6 +16,11 @@ set -e
 #   AMI_ENVIRONMENT  — Value for the Environment tag; use 'test' (default) so
 #                      smoke/scripts/infra-ami.sh can discover the AMI, or
 #                      'production' for public release builds
+#   NOVNC_HTTP_PORT  — HTTP port nginx listens on (default: 80).
+#                      Must be 80 when using Let's Encrypt (HTTP-01 challenge).
+#                      Use 8080 only for self-signed / no-certbot builds.
+#   NOVNC_HTTPS_PORT — HTTPS port nginx listens on (default: 443).
+#                      Use 8443 for firewall-friendly or non-privileged deployments.
 #
 # Examples:
 #   # Build private AMIs (no certbot, not public):
@@ -23,6 +28,12 @@ set -e
 #
 #   # Build public AMIs for distribution:
 #   AMI_PUBLIC=true ./build-ami.sh
+#
+#   # Build AMIs on port 8443 (certbot-compatible — HTTP still on port 80):
+#   NOVNC_HTTPS_PORT=8443 AMI_PUBLIC=true ./build-ami.sh
+#
+#   # Build AMIs on 8080/8443 (self-signed only — certbot requires port 80):
+#   NOVNC_HTTP_PORT=8080 NOVNC_HTTPS_PORT=8443 AMI_PUBLIC=true ./build-ami.sh
 #
 #   # Build with custom prefix:
 #   AMI_NAME_PREFIX=my-novnc AMI_PUBLIC=true ./build-ami.sh
@@ -39,6 +50,8 @@ AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-${AMI_NAME:-novnc-desktop-ubuntu-24.04}}"
 USE_CERTBOT="${USE_CERTBOT:-false}"
 AMI_PUBLIC="${AMI_PUBLIC:-false}"
 AMI_ENVIRONMENT="${AMI_ENVIRONMENT:-test}"
+NOVNC_HTTP_PORT="${NOVNC_HTTP_PORT:-80}"
+NOVNC_HTTPS_PORT="${NOVNC_HTTPS_PORT:-443}"
 
 echo "=========================================="
 echo "Building noVNC Desktop AMIs"
@@ -50,6 +63,8 @@ echo "Variants:      openbox, elementary"
 echo "Use Certbot:   $USE_CERTBOT"
 echo "Public AMI:    $AMI_PUBLIC"
 echo "Environment:   $AMI_ENVIRONMENT"
+echo "HTTP Port:     $NOVNC_HTTP_PORT"
+echo "HTTPS Port:    $NOVNC_HTTPS_PORT"
 echo ""
 
 # Check if Packer is installed
@@ -68,6 +83,8 @@ packer validate \
     -var "use_certbot=$USE_CERTBOT" \
     -var "ami_public=$AMI_PUBLIC" \
     -var "ami_environment=$AMI_ENVIRONMENT" \
+    -var "novnc_http_port=$NOVNC_HTTP_PORT" \
+    -var "novnc_https_port=$NOVNC_HTTPS_PORT" \
     packer.pkr.hcl
 
 echo ""
@@ -85,6 +102,8 @@ packer build \
     -var "use_certbot=$USE_CERTBOT" \
     -var "ami_public=$AMI_PUBLIC" \
     -var "ami_environment=$AMI_ENVIRONMENT" \
+    -var "novnc_http_port=$NOVNC_HTTP_PORT" \
+    -var "novnc_https_port=$NOVNC_HTTPS_PORT" \
     packer.pkr.hcl
 
 echo ""

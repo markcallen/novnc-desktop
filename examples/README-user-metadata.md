@@ -20,9 +20,10 @@ handles the complete TLS setup at launch time:
 
 ### Prerequisites
 
-- A domain name you control (e.g. `myapp.example.com`).
-- DNS `A` record pointing to the instance's public IP **before** launch.
-- Security group with inbound TCP on port 80 and your HTTPS port (default 443).
+- A domain name with a public hosted zone in Route53 (e.g. `myapp.example.com`).
+- DNS `A` record pointing to the instance's public IP **before** `novnc-setup-tls` runs.
+- Security group with inbound TCP on your HTTPS port (default 443). Port 80 is not required — certificate validation uses DNS-01 via Route53.
+- The EC2 instance must have the `novnc-desktop-certbot` IAM role attached. See [route53-iam-setup.md](../docs/route53-iam-setup.md).
 
 ### Usage
 
@@ -165,23 +166,6 @@ sudo certbot renew --dry-run
 sudo certbot renew --force-renewal
 ```
 
-### Advanced: DNS-01 Validation via Route53
-
-For domains hosted in Route53 (avoids the port 80 requirement):
-
-```bash
-apt-get install -y python3-certbot-dns-route53
-
-certbot certonly \
-  --dns-route53 \
-  --non-interactive \
-  --agree-tos \
-  --email "$CERTBOT_EMAIL" \
-  -d "$CERTBOT_DOMAIN"
-```
-
-Requires the instance to have an IAM role with Route53 permissions:
-`route53:ListHostedZones`, `route53:GetChange`, `route53:ChangeResourceRecordSets`.
 
 ### Security Considerations
 
