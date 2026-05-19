@@ -129,6 +129,48 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 
 ---
 
+## Acceptance Criteria
+
+Each AC maps to one or more Functional Requirements and is covered by a named
+smoke test. After running `pnpm test`, `.smoke-artifacts/verification.json`
+records whether each criterion passed for the specific AMI and commit under
+test. Agents and operators should read that file to confirm the system is
+verified rather than re-running the full suite.
+
+To find the test that covers an AC, search the codebase for the AC ID string
+(e.g. `grep -r "AC-TLS-01" smoke/`).
+
+### TLS and network
+
+| ID        | Requirement covered | Observable outcome                                                        |
+| --------- | ------------------- | ------------------------------------------------------------------------- |
+| AC-TLS-01 | FR-4.1              | HTTPS endpoint responds (status < 500)                                    |
+| AC-TLS-02 | FR-2.2              | HTTP request receives a `301` redirect to the HTTPS URL                   |
+| AC-TLS-03 | FR-3.2              | Access URL returned by `novnc-desktop-url` uses the configured HTTPS port |
+
+### Authentication and access control
+
+| ID         | Requirement covered | Observable outcome                                                       |
+| ---------- | ------------------- | ------------------------------------------------------------------------ |
+| AC-AUTH-01 | FR-2.3              | Unauthenticated `GET /` returns `302` to `/access`                       |
+| AC-AUTH-02 | FR-2.6              | `POST /generate` from an external address returns `403`                  |
+| AC-AUTH-03 | FR-3.3              | Visiting the access URL sets the auth cookie and redirects to `vnc.html` |
+
+### Desktop rendering
+
+| ID            | Requirement covered | Observable outcome                                            |
+| ------------- | ------------------- | ------------------------------------------------------------- |
+| AC-DESKTOP-01 | FR-5.1, FR-5.2      | VNC canvas renders the desktop; smoke marker xterm is visible |
+
+### Elementary (Pantheon) — verified only when `desktopType=elementary`
+
+| ID               | Requirement covered | Observable outcome                                        |
+| ---------------- | ------------------- | --------------------------------------------------------- |
+| AC-ELEMENTARY-01 | FR-5.4              | `gala` process restarts within 20 s after being killed    |
+| AC-ELEMENTARY-02 | FR-5.5              | Clicking the noVNC canvas focuses the `SMOKE_READY` xterm |
+
+---
+
 ## Architecture
 
 ```

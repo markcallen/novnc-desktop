@@ -10,6 +10,9 @@ import { state } from './state';
 
 test.describe('nginx', () => {
   test('HTTPS endpoint responds', async ({ request }) => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-TLS-01' });
     // baseURL is https://ip so a relative path uses HTTPS.
     // /access without a token redirects to / which redirects back — use
     // maxRedirects:0 to capture the first response and avoid the loop.
@@ -18,6 +21,9 @@ test.describe('nginx', () => {
   });
 
   test('HTTP redirects to HTTPS with 301', async ({ page }) => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-TLS-02' });
     // Capture all responses so we can inspect the very first one (the 301)
     // before Playwright follows the redirect chain.
     const responses: import('@playwright/test').Response[] = [];
@@ -44,6 +50,9 @@ test.describe('nginx', () => {
   });
 
   test('generated access URL uses configured HTTPS port', () => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-TLS-03' });
     const accessUrl = new URL(state.accessUrl);
     expect(accessUrl.protocol).toBe('https:');
     expect(accessUrl.hostname).toBe(state.publicIp);
@@ -53,6 +62,9 @@ test.describe('nginx', () => {
   test('unauthenticated request to / redirects to /access', async ({
     request
   }) => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-AUTH-01' });
     // With maxRedirects:0 the 302 is returned directly without following it.
     const response = await request.get('/', { maxRedirects: 0 });
     expect(response.status()).toBe(302);
@@ -60,6 +72,9 @@ test.describe('nginx', () => {
   });
 
   test('POST to /generate is blocked with 403', async ({ request }) => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-AUTH-02' });
     const response = await request.post('/generate');
     expect(response.status()).toBe(403);
   });

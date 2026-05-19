@@ -23,9 +23,11 @@ if [[ ! -f "$STATE_FILE" ]]; then
   exit 1
 fi
 
-# Load credentials from state file; allow environment variable overrides.
+# Load credentials and AMI metadata from state file; allow environment variable overrides.
 _STATE_VNC_USER=$(jq -r '.vncUser // "ubuntu"' "$STATE_FILE")
 _STATE_SSH_KEY_PATH=$(jq -r '.sshKeyPath // ""' "$STATE_FILE")
+_STATE_AMI_ID=$(jq -r '.amiId // ""' "$STATE_FILE")
+_STATE_VARIANT=$(jq -r '.variant // ""' "$STATE_FILE")
 
 VNC_USER="${VNC_USER:-$_STATE_VNC_USER}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-${_STATE_SSH_KEY_PATH:-$REPO_ROOT/.smoke-keys/smoke.pem}}"
@@ -128,7 +130,9 @@ cat > "$STATE_FILE" <<EOF
   "novncHttpPort": $NOVNC_HTTP_PORT,
   "novncHttpsPort": $NOVNC_HTTPS_PORT,
   "vncUser": "$VNC_USER",
-  "sshKeyPath": "$SSH_KEY_PATH"
+  "sshKeyPath": "$SSH_KEY_PATH",
+  "amiId": "$_STATE_AMI_ID",
+  "variant": "$_STATE_VARIANT"
 }
 EOF
 
