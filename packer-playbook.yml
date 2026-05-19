@@ -3,4 +3,4 @@
   hosts: all
   become: true
   roles:
-    - markcallen.novnc_desktop
+    - novnc

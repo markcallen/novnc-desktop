@@ -240,8 +240,7 @@ AMIs are built with `use_certbot: false` — a self-signed TLS certificate is ba
    #!/bin/bash
    export CERTBOT_DOMAIN=myapp.example.com
    export CERTBOT_EMAIL=admin@example.com
-   export NOVNC_PORT=443
-   export NOVNC_UNSECURED_PORT=80
+   export NOVNC_HTTPS_PORT=443
    # Paste the contents of examples/user-metadata-certbot-example.sh here
    ```
 
@@ -284,13 +283,14 @@ AMI_PUBLIC=true ./build-ami.sh
 AMI_NAME_PREFIX=my-novnc AWS_REGION=us-west-2 AMI_PUBLIC=true ./build-ami.sh
 ```
 
-| Variable          | Default                      | Description                                         |
-| ----------------- | ---------------------------- | --------------------------------------------------- |
-| `AWS_REGION`      | `us-east-1`                  | AWS region to build in                              |
-| `INSTANCE_TYPE`   | `t3.medium`                  | EC2 instance type for the build                     |
-| `AMI_NAME_PREFIX` | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary names |
-| `USE_CERTBOT`     | `false`                      | Run certbot at bake time (only for private AMIs)    |
-| `AMI_PUBLIC`      | `false`                      | Make resulting AMIs publicly launchable             |
+| Variable          | Default                      | Description                                                         |
+| ----------------- | ---------------------------- | ------------------------------------------------------------------- |
+| `AWS_REGION`      | `us-east-1`                  | AWS region to build in                                              |
+| `INSTANCE_TYPE`   | `t3.medium`                  | EC2 instance type for the build                                     |
+| `AMI_NAME_PREFIX` | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary names                 |
+| `USE_CERTBOT`     | `false`                      | Run certbot at bake time (only for private AMIs)                    |
+| `AMI_PUBLIC`      | `false`                      | Make resulting AMIs publicly launchable                             |
+| `AMI_ENVIRONMENT` | `test`                       | `Environment` tag value; use `production` for public release builds |
 
 ## License
 

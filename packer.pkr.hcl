@@ -171,7 +171,11 @@ build {
     ]
   }
 
-  # Step 2a: Run Ansible for openbox variant
+  # Step 2a: Run Ansible for openbox variant.
+  # ANSIBLE_ROLES_PATH points to the local checkout so the role used is always
+  # the version in this branch, not a pinned Galaxy release.
+  # ANSIBLE_COLLECTIONS_PATH is isolated per-variant to prevent concurrent
+  # galaxy_force_install writes from corrupting a shared directory.
   provisioner "ansible" {
     only                 = ["amazon-ebs.openbox"]
     playbook_file        = "${path.root}/packer-playbook.yml"
@@ -182,10 +186,12 @@ build {
     ]
     ansible_env_vars = [
       "ANSIBLE_HOST_KEY_CHECKING=False",
+      "ANSIBLE_ROLES_PATH=${path.root}/roles",
+      "ANSIBLE_COLLECTIONS_PATH=/tmp/novnc-collections-openbox",
     ]
   }
 
-  # Step 2b: Run Ansible for elementary variant
+  # Step 2b: Run Ansible for elementary variant.
   provisioner "ansible" {
     only                 = ["amazon-ebs.elementary"]
     playbook_file        = "${path.root}/packer-playbook.yml"
@@ -196,10 +202,14 @@ build {
     ]
     ansible_env_vars = [
       "ANSIBLE_HOST_KEY_CHECKING=False",
+      "ANSIBLE_ROLES_PATH=${path.root}/roles",
+      "ANSIBLE_COLLECTIONS_PATH=/tmp/novnc-collections-elementary",
     ]
   }
 
-  # Step 3: Clean up and optimize the image
+  # Step 3: Clean up and optimise the image.
+  # For public AMIs, reset instance-specific identity so each launched instance
+  # gets its own SSH host keys and machine-id on first boot.
   provisioner "shell" {
     inline = [
       "set -e",
@@ -209,6 +219,11 @@ build {
       "sudo apt-get autoremove -y",
       "sudo truncate -s 0 /var/log/*log",
       "sudo rm -rf /var/tmp/* /tmp/*",
+      "echo '=== Resetting instance identity ==='",
+      "sudo cloud-init clean --logs 2>/dev/null || true",
+      "sudo truncate -s 0 /etc/machine-id",
+      "sudo rm -f /var/lib/dbus/machine-id",
+      "sudo rm -f /etc/ssh/ssh_host_*",
       "history -c 2>/dev/null || true",
       "cat /dev/null > ~/.bash_history 2>/dev/null || true",
       "echo '=== Image cleanup complete ==='"

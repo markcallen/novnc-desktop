@@ -67,6 +67,9 @@ aws ec2 run-instances \
 
 #### Option 3: Terraform
 
+Because `/usr/local/bin/novnc-setup-tls` is baked into the AMI, the user-data
+only needs to export variables and call the script — no file embedding required.
+
 ```hcl
 resource "aws_instance" "novnc_with_tls" {
   ami           = var.novnc_ami_id
@@ -80,7 +83,7 @@ resource "aws_instance" "novnc_with_tls" {
     export CERTBOT_DOMAIN=${var.certbot_domain}
     export CERTBOT_EMAIL=${var.certbot_email}
     export NOVNC_HTTPS_PORT=${var.novnc_https_port}
-    $(cat ${path.module}/examples/user-metadata-certbot-example.sh)
+    /usr/local/bin/novnc-setup-tls
   USERDATA
 
   tags = {

@@ -40,7 +40,12 @@ Save this as a policy document and attach it to your user or role.
         "ec2:CreateTags",
         "ec2:TerminateInstances",
         "ec2:StopInstances",
-        "ec2:StartInstances"
+        "ec2:StartInstances",
+        "ec2:AllocateAddress",
+        "ec2:ReleaseAddress",
+        "ec2:AssociateAddress",
+        "ec2:DisassociateAddress",
+        "ec2:DescribeAddresses"
       ],
       "Resource": "*"
     }
@@ -50,6 +55,8 @@ Save this as a policy document and attach it to your user or role.
 
 > **Note**: `ec2:CreateKeyPair` and `ec2:DeleteKeyPair` are only needed if you create
 > a new key pair. Omit them if you supply an existing key pair name.
+> The `ec2:Allocate/Release/AssociateAddress` actions are only needed if you use
+> an Elastic IP (see the [Using an Elastic IP](#using-an-elastic-ip-recommended-for-production) section).
 
 ## Step 1 — Find Your VPC and Subnet
 

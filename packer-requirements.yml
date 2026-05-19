@@ -1,10 +1,8 @@
 ---
+# Collections only. The role is loaded from the local checkout via
+# ANSIBLE_ROLES_PATH=${path.root}/roles set in packer.pkr.hcl, so the AMI
+# always reflects the version in the current branch rather than a pinned
+# Galaxy release.
 collections:
   - ansible.utils
   - community.general
-
-roles:
-  - name: markcallen.novnc_desktop
-    src: https://github.com/markcallen/novnc-desktop.git
-    scm: git
-    version: v0.1.5
