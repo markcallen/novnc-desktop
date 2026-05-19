@@ -33,3 +33,6 @@ smoke/ec2/terraform.tfvars
 # playwright
 playwright-report/
 test-results/
+
+# ai files
+.claude/scheduled_tasks.lock
