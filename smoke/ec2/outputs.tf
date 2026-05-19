@@ -27,3 +27,8 @@ output "ssh_key_path" {
   description = "Local path to the generated SSH private key."
   value       = local_file.smoke_pem.filename
 }
+
+output "tls_hostname" {
+  description = "FQDN of the random subdomain created for Let's Encrypt (empty when tls_zone is not set)."
+  value       = var.tls_zone != "" ? aws_route53_record.tls[0].fqdn : ""
+}

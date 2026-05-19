@@ -76,3 +76,9 @@ variable "ami_id" {
   type        = string
   default     = ""
 }
+
+variable "tls_zone" {
+  description = "Route53 hosted zone for Let's Encrypt. When set, a random subdomain A record is created. Example: smoke.markcallen.dev"
+  type        = string
+  default     = ""
+}

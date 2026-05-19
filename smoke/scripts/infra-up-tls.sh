@@ -1,100 +1,101 @@
 #!/usr/bin/env bash
-# infra-up-tls.sh — provision EC2 and configure Route53 for Let's Encrypt TLS.
+# infra-up-tls.sh — provision EC2 and create a random Route53 hostname for
+# Let's Encrypt TLS using smoke.markcallen.dev as the parent zone.
 #
 # Usage:
 #   pnpm infra:up:tls
 #
-# Runs infra-up.sh first (Terraform + SSH readiness), then upserts an A record
-# for smoke.markcallen.dev pointing to the new instance's public IP. The TLS
-# domain is saved to state.json so provision scripts pick it up automatically
-# and pass use_certbot=true to Ansible.
+# Terraform creates a random subdomain (e.g. a1b2c3d4.smoke.markcallen.dev),
+# creates an A record pointing to the instance public IP, and outputs the FQDN.
+# The hostname is saved to state.json so provision scripts automatically pass
+# use_certbot=true and tls_domain to Ansible.
+#
+# terraform destroy (pnpm infra:down) removes the A record automatically.
 #
 # Prerequisites:
 #   - AWS credentials with route53:ChangeResourceRecordSets,
 #     route53:ListHostedZones, and route53:GetChange on the
 #     smoke.markcallen.dev hosted zone.
-#   - The smoke.markcallen.dev hosted zone must exist in the AWS account.
-#   - Ports 80 and 443 must be open in terraform.tfvars (http_cidr / https_cidr).
+#   - Ports 80 and 443 must be open in terraform.tfvars (http_cidr/https_cidr).
 
 set -euo pipefail
 
-TLS_DOMAIN="smoke.markcallen.dev"
-TTL=60
+TLS_ZONE="smoke.markcallen.dev"
 LABEL="infra:up:tls"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TF_DIR="$REPO_ROOT/smoke/ec2"
+KEYS_DIR="$REPO_ROOT/.smoke-keys"
 STATE_DIR="$REPO_ROOT/.smoke-state"
+ARTIFACTS_DIR="$REPO_ROOT/.smoke-artifacts"
 STATE_FILE="$STATE_DIR/state.json"
+SSH_KEY_PATH="$KEYS_DIR/smoke.pem"
+
+VNC_USER="${VNC_USER:-ubuntu}"
+
+mkdir -p "$KEYS_DIR" "$STATE_DIR" "$ARTIFACTS_DIR"
 
 # ---------------------------------------------------------------------------
-# 1. Standard EC2 provisioning
+# 1. Terraform — create EC2, SSH key, and Route53 A record
 # ---------------------------------------------------------------------------
-bash "$REPO_ROOT/smoke/scripts/infra-up.sh"
+echo "[$LABEL] Initializing Terraform..."
+cd "$TF_DIR"
+terraform init -input=false
 
-PUBLIC_IP=$(jq -r '.publicIp' "$STATE_FILE")
+echo "[$LABEL] Applying Terraform with tls_zone=$TLS_ZONE..."
+terraform apply -auto-approve -input=false \
+  -var "tls_zone=$TLS_ZONE"
 
-# ---------------------------------------------------------------------------
-# 2. Locate the hosted zone
-# ---------------------------------------------------------------------------
-echo "[$LABEL] Looking up hosted zone for $TLS_DOMAIN..."
-HOSTED_ZONE_ID=$(aws route53 list-hosted-zones \
-  --query "HostedZones[?Name=='${TLS_DOMAIN}.'].Id" \
-  --output text | sed 's|/hostedzone/||')
+PUBLIC_IP=$(terraform output -raw public_ip)
+PUBLIC_DNS=$(terraform output -raw public_dns)
+TLS_HOSTNAME=$(terraform output -raw tls_hostname)
 
-if [[ -z "$HOSTED_ZONE_ID" ]]; then
-  echo "[$LABEL] ERROR: No hosted zone found for $TLS_DOMAIN." >&2
-  echo "[$LABEL] Create the zone in Route53 or check your AWS credentials." >&2
-  exit 1
-fi
-
-echo "[$LABEL] Hosted zone: $HOSTED_ZONE_ID"
+echo "[$LABEL] Instance ready:  $PUBLIC_IP ($PUBLIC_DNS)"
+echo "[$LABEL] TLS hostname:    $TLS_HOSTNAME"
 
 # ---------------------------------------------------------------------------
-# 3. Upsert A record smoke.markcallen.dev → public IP
+# 2. Wait for SSH to become available
 # ---------------------------------------------------------------------------
-echo "[$LABEL] Upserting A record: $TLS_DOMAIN → $PUBLIC_IP (TTL ${TTL}s)..."
-CHANGE_ID=$(aws route53 change-resource-record-sets \
-  --hosted-zone-id "$HOSTED_ZONE_ID" \
-  --change-batch "{
-    \"Changes\": [{
-      \"Action\": \"UPSERT\",
-      \"ResourceRecordSet\": {
-        \"Name\": \"${TLS_DOMAIN}.\",
-        \"Type\": \"A\",
-        \"TTL\": ${TTL},
-        \"ResourceRecords\": [{\"Value\": \"${PUBLIC_IP}\"}]
-      }
-    }]
-  }" \
-  --query 'ChangeInfo.Id' \
-  --output text | sed 's|/change/||')
-
-echo "[$LABEL] Waiting for Route53 change $CHANGE_ID to propagate..."
-aws route53 wait resource-record-sets-changed --id "$CHANGE_ID"
-echo "[$LABEL] DNS record is INSYNC."
+echo "[$LABEL] Waiting for SSH on $PUBLIC_IP..."
+attempt=0
+while true; do
+  attempt=$(( attempt + 1 ))
+  if ssh \
+      -o StrictHostKeyChecking=no \
+      -o ConnectTimeout=5 \
+      -o BatchMode=yes \
+      -i "$SSH_KEY_PATH" \
+      "$VNC_USER@$PUBLIC_IP" true 2>/dev/null; then
+    echo "[$LABEL] SSH is ready."
+    break
+  fi
+  if [[ $attempt -ge 30 ]]; then
+    echo "[$LABEL] ERROR: SSH did not become ready after 5 minutes." >&2
+    exit 1
+  fi
+  echo "[$LABEL] Attempt $attempt/30 — retrying in 10s..."
+  sleep 10
+done
 
 # ---------------------------------------------------------------------------
-# 4. Update state with tlsDomain
+# 3. Save infrastructure state
 # ---------------------------------------------------------------------------
-VNC_USER=$(jq -r '.vncUser' "$STATE_FILE")
-PUBLIC_DNS=$(jq -r '.publicDns' "$STATE_FILE")
-SSH_KEY_PATH=$(jq -r '.sshKeyPath' "$STATE_FILE")
-
 cat > "$STATE_FILE" <<EOF
 {
   "publicIp": "$PUBLIC_IP",
   "publicDns": "$PUBLIC_DNS",
   "vncUser": "$VNC_USER",
   "sshKeyPath": "$SSH_KEY_PATH",
-  "tlsDomain": "$TLS_DOMAIN"
+  "tlsDomain": "$TLS_HOSTNAME",
+  "tlsZone": "$TLS_ZONE"
 }
 EOF
 
-echo "[$LABEL] State updated: tlsDomain=$TLS_DOMAIN"
+echo "[$LABEL] State saved to $STATE_FILE"
 echo ""
 echo "Next: run a provision script to install a desktop environment:"
 echo "  pnpm provision:openbox"
 echo "  pnpm provision:elementary"
 echo ""
 echo "Ansible will automatically use certbot to obtain a Let's Encrypt"
-echo "certificate for $TLS_DOMAIN."
+echo "certificate for $TLS_HOSTNAME."

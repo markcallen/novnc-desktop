@@ -175,3 +175,28 @@ resource "aws_instance" "smoke" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------
+# Optional TLS: random subdomain + Route53 A record
+# Created only when var.tls_zone is non-empty (e.g. "smoke.markcallen.dev").
+# The random hex prefix ensures no hostname conflicts across concurrent runs.
+# terraform destroy removes both the A record and the random resource.
+# ---------------------------------------------------------------------------
+resource "random_id" "tls_host" {
+  count       = var.tls_zone != "" ? 1 : 0
+  byte_length = 4
+}
+
+data "aws_route53_zone" "tls" {
+  count = var.tls_zone != "" ? 1 : 0
+  name  = var.tls_zone
+}
+
+resource "aws_route53_record" "tls" {
+  count   = var.tls_zone != "" ? 1 : 0
+  zone_id = data.aws_route53_zone.tls[0].zone_id
+  name    = "${random_id.tls_host[0].hex}.${var.tls_zone}"
+  type    = "A"
+  ttl     = 60
+  records = [aws_instance.smoke.public_ip]
+}

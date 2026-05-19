@@ -33,6 +33,7 @@ _STATE_SSH_KEY_PATH=$(jq -r '.sshKeyPath // ""' "$STATE_FILE")
 _STATE_AMI_ID=$(jq -r '.amiId // ""' "$STATE_FILE")
 _STATE_VARIANT=$(jq -r '.variant // ""' "$STATE_FILE")
 _STATE_TLS_DOMAIN=$(jq -r '.tlsDomain // ""' "$STATE_FILE")
+_STATE_TLS_ZONE=$(jq -r '.tlsZone // ""' "$STATE_FILE")
 
 VNC_USER="${VNC_USER:-$_STATE_VNC_USER}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-${_STATE_SSH_KEY_PATH:-$REPO_ROOT/.smoke-keys/smoke.pem}}"
@@ -67,11 +68,16 @@ ansible-galaxy install -r requirements.yml --force
 # ---------------------------------------------------------------------------
 echo "[provision:$DESKTOP_TYPE] Ensuring smoke security group allows HTTP $NOVNC_HTTP_PORT and HTTPS $NOVNC_HTTPS_PORT..."
 cd "$REPO_ROOT/smoke/ec2"
+_TF_TLS_ZONE_VAR=()
+if [[ -n "$_STATE_TLS_ZONE" ]]; then
+  _TF_TLS_ZONE_VAR=(-var "tls_zone=$_STATE_TLS_ZONE")
+fi
 terraform apply \
   -auto-approve \
   -input=false \
   -var "novnc_http_port=$NOVNC_HTTP_PORT" \
-  -var "novnc_https_port=$NOVNC_HTTPS_PORT"
+  -var "novnc_https_port=$NOVNC_HTTPS_PORT" \
+  "${_TF_TLS_ZONE_VAR[@]}"
 
 PUBLIC_IP=$(terraform output -raw public_ip)
 PUBLIC_DNS=$(terraform output -raw public_dns)
