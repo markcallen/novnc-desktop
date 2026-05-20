@@ -17,10 +17,6 @@
 
 set -euo pipefail
 
-# Prefer pip-installed ansible over the system package (which may have broken
-# pyOpenSSL/cryptography compatibility on some Ubuntu versions).
-export PATH="$HOME/.local/bin:$PATH"
-
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_DIR="$REPO_ROOT/.smoke-state"
 STATE_FILE="$STATE_DIR/state.json"
