@@ -179,18 +179,20 @@ echo "[$LABEL] Verifying AMI contents (pre-Ansible)..."
 SSH_OPTS=(-o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY_PATH")
 AMI_VERIFY_PASS=true
 
-for cmd in novnc-desktop-url novnc-setup-tls; do
+for cmd in novnc-desktop-url novnc-set-base-url novnc-setup-tls; do
+  ac="AC-AMI-02/03/05"
   if ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "test -x /usr/local/bin/$cmd" 2>/dev/null; then
-    echo "[$LABEL]   [PASS] /usr/local/bin/$cmd present (AC-AMI-02/03)"
+    echo "[$LABEL]   [PASS] /usr/local/bin/$cmd present ($ac)"
   else
     echo "[$LABEL]   [FAIL] /usr/local/bin/$cmd missing — AMI was not built with all roles" >&2
     AMI_VERIFY_PASS=false
   fi
 done
 
-for svc in novnc-auth.service nginx novnc.service novnc-desktop.service; do
+for svc in novnc-auth.service nginx novnc.service novnc-desktop.service novnc-set-base-url.service; do
+  ac="AC-AMI-04/06"
   if ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "systemctl is-active --quiet $svc" 2>/dev/null; then
-    echo "[$LABEL]   [PASS] $svc active (AC-AMI-04)"
+    echo "[$LABEL]   [PASS] $svc active ($ac)"
   else
     echo "[$LABEL]   [FAIL] $svc not active — AMI services did not start on boot" >&2
     AMI_VERIFY_PASS=false

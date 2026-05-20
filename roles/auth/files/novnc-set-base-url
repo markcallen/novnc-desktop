@@ -1,0 +1,82 @@
+#!/bin/bash
+# novnc-set-base-url — update the auth service base_url from EC2 instance metadata.
+#
+# Runs on every boot via novnc-set-base-url.service, but skips when a
+# Let's Encrypt certificate is present — that means novnc-setup-tls has already
+# configured a domain-based URL, which takes precedence over the public IP.
+#
+# When no TLS cert exists, the script queries IMDSv2 for the instance's public
+# hostname (preferred) or public IPv4 (fallback) and writes it into
+# /etc/novnc-auth/config.json, preserving the HTTPS port that was baked in at
+# AMI build time.
+
+set -euo pipefail
+
+CONFIG_FILE="/etc/novnc-auth/config.json"
+IMDS="http://169.254.169.254/latest"
+
+# Skip if novnc-setup-tls has already configured a Let's Encrypt certificate.
+if compgen -G "/etc/letsencrypt/live/*/fullchain.pem" > /dev/null 2>&1; then
+  echo "Let's Encrypt certificate found; base_url is managed by novnc-setup-tls. Skipping."
+  exit 0
+fi
+
+# Query IMDSv2 for the public address.
+TOKEN=$(curl -sf \
+  --connect-timeout 5 \
+  -X PUT "$IMDS/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 30" 2>/dev/null) || TOKEN=""
+
+PUBLIC_HOST=""
+if [[ -n "$TOKEN" ]]; then
+  PUBLIC_HOST=$(curl -sf \
+    --connect-timeout 5 \
+    -H "X-aws-ec2-metadata-token: $TOKEN" \
+    "$IMDS/meta-data/public-hostname" 2>/dev/null) || PUBLIC_HOST=""
+
+  if [[ -z "$PUBLIC_HOST" ]]; then
+    PUBLIC_HOST=$(curl -sf \
+      --connect-timeout 5 \
+      -H "X-aws-ec2-metadata-token: $TOKEN" \
+      "$IMDS/meta-data/public-ipv4" 2>/dev/null) || PUBLIC_HOST=""
+  fi
+fi
+
+if [[ -z "$PUBLIC_HOST" ]]; then
+  echo "WARNING: Could not determine public address from IMDS; base_url unchanged." >&2
+  exit 0
+fi
+
+# Rewrite base_url in config.json, preserving the build-time HTTPS port.
+python3 - "$PUBLIC_HOST" <<'PYEOF'
+import json, sys, os, stat, urllib.parse
+
+public_host = sys.argv[1]
+path = "/etc/novnc-auth/config.json"
+
+with open(path) as fh:
+    data = json.load(fh)
+
+parsed = urllib.parse.urlparse(data.get("base_url", "https://localhost"))
+port = parsed.port  # None when standard 443; integer for non-standard ports
+
+new_base_url = f"https://{public_host}:{port}" if port and port != 443 else f"https://{public_host}"
+
+if data.get("base_url") == new_base_url:
+    print(f"base_url already correct: {new_base_url}")
+    sys.exit(0)
+
+data["base_url"] = new_base_url
+
+tmp = path + ".tmp"
+with open(tmp, "w") as fh:
+    json.dump(data, fh, indent=2)
+    fh.write("\n")
+
+st = os.stat(path)
+os.chmod(tmp, stat.S_IMODE(st.st_mode))
+os.chown(tmp, st.st_uid, st.st_gid)
+os.replace(tmp, path)
+
+print(f"base_url set to {new_base_url}")
+PYEOF
