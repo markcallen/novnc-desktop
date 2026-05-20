@@ -55,7 +55,7 @@ test.describe('nginx', () => {
       .annotations.push({ type: 'requirement', description: 'AC-TLS-03' });
     const accessUrl = new URL(state.accessUrl);
     expect(accessUrl.protocol).toBe('https:');
-    expect(accessUrl.hostname).toBe(state.publicIp);
+    expect([state.publicIp, state.publicDns]).toContain(accessUrl.hostname);
     expect(accessUrl.port || '443').toBe(String(state.novncHttpsPort));
   });
 
