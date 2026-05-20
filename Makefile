@@ -12,13 +12,13 @@ PACKER_MIN_VERSION  := 1.11.0
 NVM_DIR ?= $(HOME)/.nvm
 
 .PHONY: setup setup-check setup-ansible setup-node setup-pnpm \
-        setup-terraform setup-packer setup-deps setup-galaxy
+        setup-terraform setup-packer setup-deps setup-playwright setup-galaxy
 
 # ---------------------------------------------------------------------------
 # setup — install and configure all required tools
 # ---------------------------------------------------------------------------
 setup: setup-ansible setup-node setup-pnpm setup-terraform setup-packer \
-       setup-deps setup-galaxy
+       setup-deps setup-playwright setup-galaxy
 	@echo ""
 	@$(MAKE) --no-print-directory setup-check
 
@@ -33,6 +33,7 @@ setup-check:
 	@printf "  %-14s %s\n" "terraform:" "$$(terraform --version 2>/dev/null | head -1 || echo 'not found')"
 	@printf "  %-14s %s\n" "packer:"    "$$(packer --version 2>/dev/null || echo 'not found')"
 	@printf "  %-14s %s\n" "python:"    "$$(~/.local/share/pipx/venvs/ansible-core/bin/python --version 2>/dev/null || echo 'not found')"
+	@printf "  %-14s %s\n" "playwright:" "$$(pnpm exec playwright --version 2>/dev/null || echo 'not found')"
 
 # ---------------------------------------------------------------------------
 # setup-ansible — install ansible-core >= 2.18 via pipx (requires Python 3.11+)
@@ -102,8 +103,15 @@ setup-packer:
 setup-deps:
 	@echo "==> Installing Node.js dependencies..."
 	pnpm install --frozen-lockfile
-	@echo "==> Installing Playwright browsers..."
+
+# ---------------------------------------------------------------------------
+# setup-playwright — install Playwright browser binaries and system dependencies
+# ---------------------------------------------------------------------------
+setup-playwright:
+	@echo "==> Installing Playwright browser binaries..."
 	pnpm exec playwright install chromium
+	@echo "==> Installing Playwright system dependencies (requires sudo)..."
+	pnpm exec playwright install-deps chromium
 
 # ---------------------------------------------------------------------------
 # setup-galaxy — install Ansible Galaxy collections

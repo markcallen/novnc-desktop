@@ -17,6 +17,10 @@
 
 set -euo pipefail
 
+# Prefer pip-installed ansible over the system package (which may have broken
+# pyOpenSSL/cryptography compatibility on some Ubuntu versions).
+export PATH="$HOME/.local/bin:$PATH"
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_DIR="$REPO_ROOT/.smoke-state"
 STATE_FILE="$STATE_DIR/state.json"
@@ -31,7 +35,7 @@ fi
 _STATE_VNC_USER=$(jq -r '.vncUser // "ubuntu"' "$STATE_FILE")
 _STATE_SSH_KEY_PATH=$(jq -r '.sshKeyPath // ""' "$STATE_FILE")
 _STATE_AMI_ID=$(jq -r '.amiId // ""' "$STATE_FILE")
-_STATE_VARIANT=$(jq -r '.variant // ""' "$STATE_FILE")
+_STATE_VARIANT="$DESKTOP_TYPE"
 _STATE_TLS_DOMAIN=$(jq -r '.tlsDomain // ""' "$STATE_FILE")
 _STATE_TLS_ZONE=$(jq -r '.tlsZone // ""' "$STATE_FILE")
 
@@ -149,8 +153,8 @@ fi
 # ---------------------------------------------------------------------------
 _TLS_DOMAIN_JSON=""
 if [[ -n "$_STATE_TLS_DOMAIN" ]]; then
-  _TLS_DOMAIN_JSON="
-  \"tlsDomain\": \"$_STATE_TLS_DOMAIN\","
+  _TLS_DOMAIN_JSON=",
+  \"tlsDomain\": \"$_STATE_TLS_DOMAIN\""
 fi
 
 cat > "$STATE_FILE" <<EOF
