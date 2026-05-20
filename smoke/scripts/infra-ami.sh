@@ -154,20 +154,6 @@ while true; do
   sleep 10
 done
 
-cat > "$STATE_FILE" <<EOF
-{
-  "publicIp": "$PUBLIC_IP",
-  "publicDns": "$PUBLIC_DNS",
-  "vncUser": "$VNC_USER",
-  "sshKeyPath": "$SSH_KEY_PATH",
-  "amiId": "$AMI_ID",
-  "variant": "$VARIANT",
-  "httpsPort": $HTTPS_PORT
-}
-EOF
-
-echo "[$LABEL] State saved to $STATE_FILE"
-
 # ---------------------------------------------------------------------------
 # AMI content verification (AC-AMI-02, AC-AMI-03, AC-AMI-04)
 # Confirm required commands and services are baked into the AMI before any
@@ -207,8 +193,39 @@ if [[ "$AMI_VERIFY_PASS" == "false" ]]; then
 fi
 
 echo "[$LABEL] AMI content verification passed."
+
+# ---------------------------------------------------------------------------
+# Fetch a time-limited desktop access URL and write it into state
+# ---------------------------------------------------------------------------
 echo ""
-echo "Desktop: https://$PUBLIC_IP:$HTTPS_PORT"
+echo "[$LABEL] Fetching desktop access URL..."
+DESKTOP_URL_OUTPUT=$(
+  ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" novnc-desktop-url
+)
+ACCESS_URL=$(echo "$DESKTOP_URL_OUTPUT" | awk '/Desktop URL/{print $NF}')
+
+if [[ -z "$ACCESS_URL" ]]; then
+  echo "[$LABEL] ERROR: Could not parse access URL from novnc-desktop-url output:" >&2
+  echo "$DESKTOP_URL_OUTPUT" >&2
+  exit 1
+fi
+
+cat > "$STATE_FILE" <<EOF
+{
+  "publicIp": "$PUBLIC_IP",
+  "publicDns": "$PUBLIC_DNS",
+  "vncUser": "$VNC_USER",
+  "sshKeyPath": "$SSH_KEY_PATH",
+  "amiId": "$AMI_ID",
+  "variant": "$VARIANT",
+  "httpsPort": $HTTPS_PORT,
+  "accessUrl": "$ACCESS_URL"
+}
+EOF
+
+echo "[$LABEL] State updated with accessUrl."
+echo ""
+echo "Desktop: $ACCESS_URL"
 echo ""
 echo "Next: run the smoke tests:"
 echo "  pnpm test"

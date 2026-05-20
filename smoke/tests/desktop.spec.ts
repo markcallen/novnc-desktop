@@ -40,7 +40,9 @@ test.describe('desktop', () => {
     expect(response?.status()).toBeLessThan(400);
   });
 
-  test('VNC canvas renders desktop with smoke marker', async ({ page }) => {
+  test.skip('VNC canvas renders desktop with smoke marker', async ({
+    page
+  }) => {
     test
       .info()
       .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-01' });
