@@ -232,6 +232,39 @@ ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" sudo systemctl restart novnc-auth.se
 sleep 2
 
 # ---------------------------------------------------------------------------
+# Ensure nginx listens on the requested ports.  The AMI may have been baked
+# with different ports; patch the site config and reload if needed.
+# TODO: remove this hack once novnc-configure-userdata is implemented
+#       (see https://github.com/markcallen/novnc-desktop/issues/33).
+# ---------------------------------------------------------------------------
+echo ""
+echo "[$LABEL] Ensuring nginx listens on HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT..."
+ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" bash -s -- "$HTTP_PORT" "$HTTPS_PORT" << 'REMOTE'
+HTTP_PORT="$1"
+HTTPS_PORT="$2"
+CONF=/etc/nginx/sites-enabled/novnc
+
+CURRENT_HTTP=$(grep -oP '(?<=listen )\d+(?= default_server)' "$CONF" | head -1)
+CURRENT_HTTPS=$(grep -oP '(?<=listen )\d+(?= ssl)' "$CONF" | head -1)
+
+if [[ "$CURRENT_HTTP" == "$HTTP_PORT" && "$CURRENT_HTTPS" == "$HTTPS_PORT" ]]; then
+  echo "nginx ports already correct (HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT)"
+  exit 0
+fi
+
+echo "Patching nginx: HTTP $CURRENT_HTTP→$HTTP_PORT  HTTPS $CURRENT_HTTPS→$HTTPS_PORT"
+sudo sed -i \
+  -e "s/listen ${CURRENT_HTTP} default_server;/listen ${HTTP_PORT} default_server;/g" \
+  -e "s/listen \[::\]:${CURRENT_HTTP} default_server;/listen [::]:${HTTP_PORT} default_server;/g" \
+  -e "s/listen ${CURRENT_HTTPS} ssl/listen ${HTTPS_PORT} ssl/g" \
+  -e "s/listen \[::\]:${CURRENT_HTTPS} ssl/listen [::]:${HTTPS_PORT} ssl/g" \
+  "$CONF"
+
+sudo nginx -t && sudo systemctl reload nginx
+echo "nginx reloaded"
+REMOTE
+
+# ---------------------------------------------------------------------------
 # Fetch a time-limited desktop access URL and write it into state
 # ---------------------------------------------------------------------------
 echo ""
