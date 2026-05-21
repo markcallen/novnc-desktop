@@ -13,6 +13,7 @@
     "infra:ami": "bash smoke/scripts/infra-ami.sh",
     "infra:ami:elementary": "bash smoke/scripts/infra-ami.sh --variant elementary",
     "infra:ami:elementary:custom-ports": "bash smoke/scripts/infra-ami.sh --variant elementary --http-port 8080 --https-port 8443",
+    "infra:ami:elementary:custom-ports:public": "bash smoke/scripts/infra-ami.sh --variant elementary --http-port 8080 --https-port 8443 --public",
     "infra:status": "bash smoke/scripts/infra-status.sh",
     "infra:down": "bash smoke/scripts/infra-down.sh",
     "provision:openbox": "bash smoke/scripts/provision-openbox.sh",

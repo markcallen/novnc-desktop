@@ -195,6 +195,43 @@ fi
 echo "[$LABEL] AMI content verification passed."
 
 # ---------------------------------------------------------------------------
+# Ensure the auth service base_url reflects the actual public hostname and
+# the configured HTTPS port.  novnc-set-base-url.service already ran on boot
+# and set the hostname, but it reads the port from the baked-in config — if
+# the AMI was built with a different HTTPS port than the one requested here,
+# the URL would be wrong.  Override it now with the known values.
+# ---------------------------------------------------------------------------
+BASE_URL_EXPECTED="https://${PUBLIC_DNS}"
+if [[ "$HTTPS_PORT" != "443" ]]; then
+  BASE_URL_EXPECTED="https://${PUBLIC_DNS}:${HTTPS_PORT}"
+fi
+
+echo ""
+echo "[$LABEL] Setting auth base_url to $BASE_URL_EXPECTED..."
+ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "sudo python3 -" << PYEOF
+import json, os, stat
+path = '/etc/novnc-auth/config.json'
+new_url = '${BASE_URL_EXPECTED}'
+with open(path) as f:
+    d = json.load(f)
+if d.get('base_url') == new_url:
+    print('base_url already correct: ' + new_url)
+else:
+    d['base_url'] = new_url
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(d, f, indent=2)
+        f.write('\n')
+    st = os.stat(path)
+    os.chmod(tmp, stat.S_IMODE(st.st_mode))
+    os.chown(tmp, st.st_uid, st.st_gid)
+    os.replace(tmp, path)
+    print('base_url updated to: ' + new_url)
+PYEOF
+ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" sudo systemctl restart novnc-auth.service
+sleep 2
+
+# ---------------------------------------------------------------------------
 # Fetch a time-limited desktop access URL and write it into state
 # ---------------------------------------------------------------------------
 echo ""
@@ -218,7 +255,8 @@ cat > "$STATE_FILE" <<EOF
   "sshKeyPath": "$SSH_KEY_PATH",
   "amiId": "$AMI_ID",
   "variant": "$VARIANT",
-  "httpsPort": $HTTPS_PORT,
+  "novncHttpPort": $HTTP_PORT,
+  "novncHttpsPort": $HTTPS_PORT,
   "accessUrl": "$ACCESS_URL"
 }
 EOF
