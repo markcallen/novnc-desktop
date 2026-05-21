@@ -265,6 +265,28 @@ echo "nginx reloaded"
 REMOTE
 
 # ---------------------------------------------------------------------------
+# Ensure UFW allows the requested ports.  The AMI may have been baked with
+# different ports; add rules for any ports not already open.
+# TODO: remove this hack once novnc-configure-userdata is implemented
+#       (see https://github.com/markcallen/novnc-desktop/issues/33).
+# ---------------------------------------------------------------------------
+echo ""
+echo "[$LABEL] Ensuring UFW allows HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT..."
+ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" bash -s -- "$HTTP_PORT" "$HTTPS_PORT" << 'REMOTE'
+HTTP_PORT="$1"
+HTTPS_PORT="$2"
+
+for PORT in "$HTTP_PORT" "$HTTPS_PORT"; do
+  if sudo ufw status | grep -qE "^${PORT}/tcp\s+ALLOW"; then
+    echo "UFW already allows $PORT/tcp"
+  else
+    sudo ufw allow "${PORT}/tcp"
+    echo "UFW opened $PORT/tcp"
+  fi
+done
+REMOTE
+
+# ---------------------------------------------------------------------------
 # Fetch a time-limited desktop access URL and write it into state
 # ---------------------------------------------------------------------------
 echo ""
