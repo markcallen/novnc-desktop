@@ -253,12 +253,26 @@ if [[ "$CURRENT_HTTP" == "$HTTP_PORT" && "$CURRENT_HTTPS" == "$HTTPS_PORT" ]]; t
 fi
 
 echo "Patching nginx: HTTP $CURRENT_HTTP→$HTTP_PORT  HTTPS $CURRENT_HTTPS→$HTTPS_PORT"
+
+# Update listen ports
 sudo sed -i \
   -e "s/listen ${CURRENT_HTTP} default_server;/listen ${HTTP_PORT} default_server;/g" \
   -e "s/listen \[::\]:${CURRENT_HTTP} default_server;/listen [::]:${HTTP_PORT} default_server;/g" \
   -e "s/listen ${CURRENT_HTTPS} ssl/listen ${HTTPS_PORT} ssl/g" \
   -e "s/listen \[::\]:${CURRENT_HTTPS} ssl/listen [::]:${HTTPS_PORT} ssl/g" \
   "$CONF"
+
+# Update HTTP→HTTPS redirect to include the non-standard HTTPS port.
+# The baked-in redirect is either:
+#   return 301 https://$host$request_uri;          (port 443, no port in URL)
+#   return 301 https://$host:<port>$request_uri;   (non-standard port)
+# Replace whatever is there with the correct target for the new HTTPS port.
+if [[ "$HTTPS_PORT" == "443" ]]; then
+  NEW_REDIRECT="return 301 https://\$host\$request_uri;"
+else
+  NEW_REDIRECT="return 301 https://\$host:${HTTPS_PORT}\$request_uri;"
+fi
+sudo sed -i "s|return 301 https://\\\$host[^;]*;|${NEW_REDIRECT}|g" "$CONF"
 
 sudo nginx -t && sudo systemctl reload nginx
 echo "nginx reloaded"
