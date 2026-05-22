@@ -1,0 +1,283 @@
+#!/bin/bash
+# novnc-configure-userdata — apply first-boot noVNC config from EC2 user data.
+#
+# Reads raw JSON from IMDS user-data and applies supported novnc_* keys:
+#   - novnc_http_port
+#   - novnc_https_port
+#   - novnc_hostname
+#   - novnc_use_certbot
+#
+# Runs once via systemd. Safe no-op when user-data is empty/non-JSON or has no
+# supported keys.
+
+set -euo pipefail
+
+IMDS="http://169.254.169.254/latest"
+AUTH_CONFIG="/etc/novnc-auth/config.json"
+NGINX_CONF="/etc/nginx/sites-available/novnc"
+UFW_BIN="/usr/sbin/ufw"
+SENTINEL="/var/lib/novnc-auth/.userdata-applied"
+HOST_LOCK="/var/lib/novnc-auth/.userdata-hostname-lock"
+
+log() {
+  echo "[novnc-configure-userdata] $*"
+}
+
+require_file() {
+  local path="$1"
+  if [[ ! -f "$path" ]]; then
+    log "Required file missing: $path"
+    exit 1
+  fi
+}
+
+valid_port() {
+  [[ "$1" =~ ^[0-9]+$ ]] && (( "$1" >= 1 && "$1" <= 65535 ))
+}
+
+TOKEN=$(curl -sf --connect-timeout 5 -X PUT "$IMDS/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 30" 2>/dev/null) || TOKEN=""
+if [[ -z "$TOKEN" ]]; then
+  log "IMDSv2 token unavailable; skipping."
+  touch "$SENTINEL"
+  exit 0
+fi
+
+RAW_USER_DATA=$(curl -sf --connect-timeout 5 -H "X-aws-ec2-metadata-token: $TOKEN" "$IMDS/user-data" 2>/dev/null) || RAW_USER_DATA=""
+if [[ -z "${RAW_USER_DATA//[[:space:]]/}" ]]; then
+  log "No user-data present; nothing to apply."
+  touch "$SENTINEL"
+  exit 0
+fi
+
+require_file "$AUTH_CONFIG"
+require_file "$NGINX_CONF"
+
+PARSED=$(python3 - <<'PYEOF' "$RAW_USER_DATA"
+import json
+import sys
+
+raw = sys.argv[1]
+
+try:
+    data = json.loads(raw)
+except Exception:
+    print("parse_error=1")
+    sys.exit(0)
+
+if not isinstance(data, dict):
+    print("parse_error=1")
+    sys.exit(0)
+
+
+def emit(key, value):
+    if value is None:
+        value = ""
+    print(f"{key}={value}")
+
+http_port = data.get("novnc_http_port")
+https_port = data.get("novnc_https_port")
+hostname = data.get("novnc_hostname")
+use_certbot = data.get("novnc_use_certbot")
+
+emit("parse_error", 0)
+emit("novnc_http_port", http_port)
+emit("novnc_https_port", https_port)
+emit("novnc_hostname", hostname)
+
+if isinstance(use_certbot, bool):
+    emit("novnc_use_certbot", "true" if use_certbot else "false")
+else:
+    emit("novnc_use_certbot", "")
+PYEOF
+)
+
+parse_error=0
+novnc_http_port=""
+novnc_https_port=""
+novnc_hostname=""
+novnc_use_certbot=""
+
+while IFS='=' read -r key value; do
+  case "$key" in
+    parse_error) parse_error="$value" ;;
+    novnc_http_port) novnc_http_port="$value" ;;
+    novnc_https_port) novnc_https_port="$value" ;;
+    novnc_hostname) novnc_hostname="$value" ;;
+    novnc_use_certbot) novnc_use_certbot="$value" ;;
+  esac
+done <<< "$PARSED"
+
+if [[ "$parse_error" == "1" ]]; then
+  log "User-data is not valid JSON object; skipping."
+  touch "$SENTINEL"
+  exit 0
+fi
+
+if [[ -z "$novnc_http_port" && -z "$novnc_https_port" && -z "$novnc_hostname" && -z "$novnc_use_certbot" ]]; then
+  log "No novnc_* keys found in user-data; nothing to apply."
+  touch "$SENTINEL"
+  exit 0
+fi
+
+if [[ -n "$novnc_http_port" ]] && ! valid_port "$novnc_http_port"; then
+  log "Invalid novnc_http_port: $novnc_http_port"
+  exit 1
+fi
+if [[ -n "$novnc_https_port" ]] && ! valid_port "$novnc_https_port"; then
+  log "Invalid novnc_https_port: $novnc_https_port"
+  exit 1
+fi
+if [[ -n "$novnc_use_certbot" && "$novnc_use_certbot" != "true" && "$novnc_use_certbot" != "false" ]]; then
+  log "Invalid novnc_use_certbot: $novnc_use_certbot"
+  exit 1
+fi
+
+CURRENT_BASE=$(python3 - <<'PYEOF' "$AUTH_CONFIG"
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    d = json.load(f)
+print(d.get("base_url", "https://localhost"))
+PYEOF
+)
+
+CURRENT_HOST=$(python3 - <<'PYEOF' "$CURRENT_BASE"
+import sys
+import urllib.parse
+p = urllib.parse.urlparse(sys.argv[1])
+print(p.hostname or "")
+PYEOF
+)
+
+CURRENT_HTTPS_PORT=$(python3 - <<'PYEOF' "$CURRENT_BASE"
+import sys
+import urllib.parse
+p = urllib.parse.urlparse(sys.argv[1])
+if p.port:
+    print(p.port)
+else:
+    print(443)
+PYEOF
+)
+
+TARGET_HOST="$CURRENT_HOST"
+TARGET_HTTP_PORT="$novnc_http_port"
+TARGET_HTTPS_PORT="$novnc_https_port"
+
+if [[ -z "$TARGET_HTTPS_PORT" ]]; then
+  TARGET_HTTPS_PORT="$CURRENT_HTTPS_PORT"
+fi
+if [[ -z "$TARGET_HTTP_PORT" ]]; then
+  CURRENT_HTTP_PORT=$(grep -oP '(?<=listen )\d+(?= default_server)' "$NGINX_CONF" | head -1 || true)
+  TARGET_HTTP_PORT="${CURRENT_HTTP_PORT:-80}"
+fi
+
+if [[ -n "$novnc_hostname" ]]; then
+  TARGET_HOST="$novnc_hostname"
+  touch "$HOST_LOCK"
+fi
+
+if [[ -z "$TARGET_HOST" ]]; then
+  PUBLIC_HOST=$(curl -sf --connect-timeout 5 -H "X-aws-ec2-metadata-token: $TOKEN" "$IMDS/meta-data/public-hostname" 2>/dev/null) || PUBLIC_HOST=""
+  if [[ -z "$PUBLIC_HOST" ]]; then
+    PUBLIC_HOST=$(curl -sf --connect-timeout 5 -H "X-aws-ec2-metadata-token: $TOKEN" "$IMDS/meta-data/public-ipv4" 2>/dev/null) || PUBLIC_HOST=""
+  fi
+  TARGET_HOST="$PUBLIC_HOST"
+fi
+
+if [[ -z "$TARGET_HOST" ]]; then
+  log "Could not determine hostname; leaving base_url host unchanged."
+  TARGET_HOST="$CURRENT_HOST"
+fi
+
+python3 - <<'PYEOF' "$AUTH_CONFIG" "$TARGET_HOST" "$TARGET_HTTPS_PORT"
+import json
+import os
+import stat
+import sys
+
+path, host, https_port_s = sys.argv[1], sys.argv[2], sys.argv[3]
+https_port = int(https_port_s)
+
+with open(path, encoding="utf-8") as f:
+    data = json.load(f)
+
+new_base = f"https://{host}" if https_port == 443 else f"https://{host}:{https_port}"
+if data.get("base_url") == new_base:
+    print(f"base_url already correct: {new_base}")
+    sys.exit(0)
+
+data["base_url"] = new_base
+
+tmp = path + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+
+st = os.stat(path)
+os.chmod(tmp, stat.S_IMODE(st.st_mode))
+os.chown(tmp, st.st_uid, st.st_gid)
+os.replace(tmp, path)
+print(f"base_url set to {new_base}")
+PYEOF
+
+CURRENT_HTTP=$(grep -oP '(?<=listen )\d+(?= default_server)' "$NGINX_CONF" | head -1)
+CURRENT_HTTPS=$(grep -oP '(?<=listen )\d+(?= ssl)' "$NGINX_CONF" | head -1)
+
+if [[ "$CURRENT_HTTP" != "$TARGET_HTTP_PORT" || "$CURRENT_HTTPS" != "$TARGET_HTTPS_PORT" ]]; then
+  sed -i \
+    -e "s/listen ${CURRENT_HTTP} default_server;/listen ${TARGET_HTTP_PORT} default_server;/g" \
+    -e "s/listen \[::\]:${CURRENT_HTTP} default_server;/listen [::]:${TARGET_HTTP_PORT} default_server;/g" \
+    -e "s/listen ${CURRENT_HTTPS} ssl/listen ${TARGET_HTTPS_PORT} ssl/g" \
+    -e "s/listen \[::\]:${CURRENT_HTTPS} ssl/listen [::]:${TARGET_HTTPS_PORT} ssl/g" \
+    "$NGINX_CONF"
+
+  if [[ "$TARGET_HTTPS_PORT" == "443" ]]; then
+    NEW_REDIRECT='return 301 https://$host$request_uri;'
+  else
+    NEW_REDIRECT="return 301 https://\\$host:${TARGET_HTTPS_PORT}\\$request_uri;"
+  fi
+  sed -i "s|return 301 https://\\\$host[^;]*;|${NEW_REDIRECT}|g" "$NGINX_CONF"
+
+  nginx -t
+  systemctl reload nginx
+  log "Updated nginx ports HTTP=${TARGET_HTTP_PORT} HTTPS=${TARGET_HTTPS_PORT}."
+else
+  log "nginx ports already correct."
+fi
+
+if [[ -x "$UFW_BIN" ]]; then
+  STALE_CANDIDATES=("$CURRENT_HTTP" "$CURRENT_HTTPS" "80" "443")
+
+  for p in "$TARGET_HTTP_PORT" "$TARGET_HTTPS_PORT"; do
+    if ufw status | grep -qE "^${p}/tcp[[:space:]]+ALLOW"; then
+      log "UFW already allows ${p}/tcp"
+    else
+      ufw allow "${p}/tcp" >/dev/null
+      log "UFW opened ${p}/tcp"
+    fi
+  done
+
+  for p in "${STALE_CANDIDATES[@]}"; do
+    if [[ -z "$p" || "$p" == "$TARGET_HTTP_PORT" || "$p" == "$TARGET_HTTPS_PORT" ]]; then
+      continue
+    fi
+    if ufw status | grep -qE "^${p}/tcp[[:space:]]+ALLOW"; then
+      # Remove stale noVNC HTTP/HTTPS rules from baked config.
+      ufw --force delete allow "${p}/tcp" >/dev/null || true
+      log "UFW removed stale ${p}/tcp rule"
+    fi
+  done
+fi
+
+if [[ "$novnc_use_certbot" == "true" ]]; then
+  if [[ -n "$novnc_hostname" ]]; then
+    CERTBOT_DOMAIN="$novnc_hostname" NOVNC_HTTPS_PORT="$TARGET_HTTPS_PORT" /usr/local/bin/novnc-setup-tls
+    log "Triggered novnc-setup-tls for ${novnc_hostname}."
+  else
+    log "novnc_use_certbot=true but novnc_hostname is empty; skipping certbot setup."
+  fi
+fi
+
+touch "$SENTINEL"
+log "Applied user-data configuration."

@@ -81,6 +81,12 @@ locals {
   resource_name       = "${var.name_prefix}-${local.stack_name}"
   http_ingress_ports  = distinct([80, var.novnc_http_port])
   https_ingress_ports = distinct([443, var.novnc_https_port])
+  user_data_json = jsonencode({
+    novnc_http_port   = var.novnc_http_port
+    novnc_https_port  = var.novnc_https_port
+    novnc_hostname    = trimspace(var.novnc_hostname) != "" ? var.novnc_hostname : null
+    novnc_use_certbot = var.novnc_use_certbot
+  })
   selected_subnet_id = try([
     for subnet in values(data.aws_subnet.default) : subnet.id
     if(
@@ -161,6 +167,8 @@ resource "aws_instance" "smoke" {
     http_endpoint = "enabled"
     http_tokens   = "required"
   }
+
+  user_data = local.user_data_json
 
   tags = {
     Name    = local.resource_name

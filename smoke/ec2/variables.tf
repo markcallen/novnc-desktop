@@ -71,6 +71,18 @@ variable "novnc_https_port" {
   default     = 443
 }
 
+variable "novnc_hostname" {
+  description = "Optional hostname override passed via EC2 user-data for noVNC base URL."
+  type        = string
+  default     = ""
+}
+
+variable "novnc_use_certbot" {
+  description = "Whether first-boot user-data should invoke novnc-setup-tls."
+  type        = bool
+  default     = false
+}
+
 variable "ami_id" {
   description = "Optional AMI ID to launch from. If not provided, uses the latest Ubuntu 24.04 AMI."
   type        = string
