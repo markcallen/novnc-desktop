@@ -21,6 +21,102 @@ Keep only stable, reviewable metadata here. Do not store secrets, credentials, o
 
 Update this section when those facts change. If live runtime state is required, discover it separately instead of treating it as a durable repo fact.
 
+## Verification Chain
+
+This repository uses a three-level chain so agents can answer "is requirement X
+verified?" without re-running the full test suite.
+
+### Level 1 — Requirements (`PRD.md`)
+
+`PRD.md` contains an **Acceptance Criteria** section. Each criterion has a
+stable ID (`AC-TLS-01`, `AC-AUTH-03`, etc.) and states the observable outcome
+that constitutes "working." Requirements are grouped under TLS, Auth, Desktop,
+and Elementary.
+
+### Level 2 — Tests (`smoke/tests/`)
+
+Each Playwright test pushes one or more requirement annotations inside its body:
+
+```typescript
+test.info().annotations.push({ type: 'requirement', description: 'AC-TLS-01' });
+```
+
+To find which test covers a given AC, search the codebase:
+
+```bash
+grep -r "AC-TLS-01" smoke/
+```
+
+### Level 3 — Evidence (`.smoke-artifacts/verification.json`)
+
+After every `pnpm test` run, `smoke/verification-reporter.ts` (a custom
+Playwright reporter) writes `.smoke-artifacts/verification.json`. This file is
+the ground truth for whether the provisioned system is verified.
+
+**Example manifest:**
+
+```json
+{
+  "timestamp": "2026-05-19T17:00:00Z",
+  "commit": "d75c566",
+  "ami_id": "ami-0abc1234",
+  "variant": "elementary",
+  "overall": "pass",
+  "criteria": {
+    "AC-TLS-01": {
+      "status": "pass",
+      "test": "nginx > HTTPS endpoint responds",
+      "file": "smoke/tests/nginx.spec.ts"
+    },
+    "AC-TLS-02": {
+      "status": "pass",
+      "test": "nginx > HTTP redirects to HTTPS with 301",
+      "file": "smoke/tests/nginx.spec.ts"
+    },
+    "AC-AUTH-03": {
+      "status": "pass",
+      "test": "desktop > access URL exchanges token for cookie and redirects to vnc.html",
+      "file": "smoke/tests/desktop.spec.ts"
+    }
+  }
+}
+```
+
+**How to read `overall`:**
+
+- `"pass"` — all criteria that ran passed; the system is verified for this AMI
+  and commit.
+- `"fail"` — at least one criterion failed; the system is **not** verified.
+- A criterion with `"status": "skip"` was conditionally skipped (e.g.
+  elementary-only tests on an openbox host); this does not affect `overall`.
+
+### Workflow for agents
+
+1. Read `PRD.md` → understand what each AC requires.
+2. Read `.smoke-artifacts/verification.json` → check `overall` and per-criterion
+   status for the current AMI and commit.
+3. If `verification.json` does not exist or is stale (commit mismatch), the
+   system has not been verified; run the smoke suite:
+   ```bash
+   pnpm infra:up          # or infra:ami for an existing AMI
+   pnpm provision:elementary   # or appropriate variant
+   pnpm test
+   ```
+4. If a criterion fails, grep for its ID in `smoke/tests/` to find the test,
+   then read the test to understand what observable behavior is broken.
+
+### What the verification chain does NOT cover
+
+- AMI build correctness (packer) — a green `verification.json` implies the
+  AMI was built correctly (services are running), but does not confirm which
+  Packer run produced it.
+- Idempotency (NFR-1) — not tested by the smoke suite; re-run the Ansible
+  playbook manually to verify.
+- Let's Encrypt certificate acquisition (FR-4.2) — requires a real domain;
+  smoke tests use self-signed certs only.
+
+---
+
 ## Installed agent rules
 
 Created by Ballast. Do not edit this section.

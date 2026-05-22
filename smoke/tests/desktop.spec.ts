@@ -24,6 +24,9 @@ test.describe('desktop', () => {
   test('access URL exchanges token for cookie and redirects to vnc.html', async ({
     page
   }) => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-AUTH-03' });
     const response = await page.goto(accessUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000
@@ -38,6 +41,13 @@ test.describe('desktop', () => {
   });
 
   test('VNC canvas renders desktop with smoke marker', async ({ page }) => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-01' });
+    test.skip(
+      state.desktopType === undefined,
+      'Smoke marker test requires infra:up (smoke_test_marker_enabled=true); skipped for AMI smoke runs'
+    );
     await page.goto(accessUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000

@@ -11,7 +11,7 @@ TF_DIR="$REPO_ROOT/smoke/ec2"
 STATE_FILE="$REPO_ROOT/.smoke-state/state.json"
 
 # ---------------------------------------------------------------------------
-# 1. Terraform destroy
+# 1. Terraform destroy (also removes the Route53 A record when tls_zone was set)
 # ---------------------------------------------------------------------------
 echo "[infra:down] Destroying Terraform resources..."
 cd "$TF_DIR"

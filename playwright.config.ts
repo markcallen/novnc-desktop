@@ -24,7 +24,8 @@ export default defineConfig({
   timeout: 120_000,
   reporter: [
     ['list'],
-    ['html', { open: 'never', outputFolder: '.smoke-artifacts/report' }]
+    ['html', { open: 'never', outputFolder: '.smoke-artifacts/report' }],
+    ['./smoke/verification-reporter.ts']
   ],
   use: {
     baseURL,

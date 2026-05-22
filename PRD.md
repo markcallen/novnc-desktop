@@ -115,6 +115,41 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | FR-6.5 | `GET /verify` checks the access cookie. Returns `200` if valid, `401` otherwise. This endpoint is called by Nginx `auth_request`. |
 | FR-6.6 | `POST /generate` mints a new token and returns `{"url": "...", "token": "...", "expires_at": "..."}`.                             |
 
+### FR-7 — Direct Ansible provisioning on an existing EC2 instance
+
+The "bring your own instance" path: the operator has a running Ubuntu 24.04 EC2
+instance and provisions it by running `ansible-playbook site.yml` against it.
+No Packer or AMI tooling is required.
+
+| ID     | Requirement                                                                                                                                        |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-7.1 | Running `ansible-playbook site.yml -i <host>, -u ubuntu --private-key <key>` against a clean Ubuntu 24.04 EC2 instance completes without error.    |
+| FR-7.2 | After provisioning, `novnc-desktop-url` is present at `/usr/local/bin/novnc-desktop-url` and executable by all users on the host.                  |
+| FR-7.3 | After provisioning, `novnc-setup-tls` is present at `/usr/local/bin/novnc-setup-tls` and executable by all users on the host.                      |
+| FR-7.4 | After provisioning, `novnc-auth.service`, `nginx`, `novnc.service`, and `novnc-desktop.service` are all active and enabled in systemd.             |
+| FR-7.5 | The provisioning smoke flow (`pnpm infra:up && pnpm provision:<variant> && pnpm test`) completes with all Acceptance Criteria passing.             |
+| FR-7.6 | After provisioning, `novnc-set-base-url` is present at `/usr/local/bin/novnc-set-base-url` and `novnc-set-base-url.service` is enabled in systemd. |
+
+### FR-8 — AMI build and launch
+
+The "pre-built image" path: Packer bakes an AMI with all Ansible roles applied.
+An EC2 instance launched from that AMI has the full desktop stack present on
+first boot. Post-launch setup is limited to TLS configuration (via
+`novnc-setup-tls` or user-data); no full Ansible re-run is required.
+
+| ID      | Requirement                                                                                                                                                                                                                                                                                                                        |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-8.1  | `build-ami.sh` produces one AMI per supported desktop variant (`openbox`, `elementary`) tagged with `Variant`, `Environment`, `Project=novnc-desktop`, and `BuildDate`.                                                                                                                                                            |
+| FR-8.2  | `packer-playbook.yml` runs all five Ansible roles (`desktop`, `vnc`, `novnc`, `auth`, `nginx`) during the Packer build so the AMI is fully provisioned.                                                                                                                                                                            |
+| FR-8.3  | An EC2 instance launched from the AMI has `novnc-desktop-url` present at `/usr/local/bin/novnc-desktop-url` without any post-launch Ansible run.                                                                                                                                                                                   |
+| FR-8.4  | An EC2 instance launched from the AMI has `novnc-setup-tls` present at `/usr/local/bin/novnc-setup-tls` without any post-launch Ansible run.                                                                                                                                                                                       |
+| FR-8.5  | `novnc-auth.service`, `nginx`, `novnc.service`, and `novnc-desktop.service` are active and enabled on an instance launched from the AMI without any post-launch Ansible run.                                                                                                                                                       |
+| FR-8.6  | After running `novnc-setup-tls` (or equivalent user-data) on an AMI-launched instance, the desktop is accessible via HTTPS and `novnc-desktop-url` returns a valid URL identical to an Ansible-provisioned host.                                                                                                                   |
+| FR-8.7  | The AMI smoke flow (`pnpm infra:ami:<variant> && pnpm provision:<variant> && pnpm test`) completes with all Acceptance Criteria passing.                                                                                                                                                                                           |
+| FR-8.8  | An EC2 instance launched from the AMI has `novnc-set-base-url` present at `/usr/local/bin/novnc-set-base-url` and `novnc-set-base-url.service` enabled, without any post-launch Ansible run.                                                                                                                                       |
+| FR-8.9  | On every boot of an AMI-launched instance, `novnc-set-base-url.service` queries EC2 instance metadata and writes the instance's public hostname (or public IPv4 fallback) as the `novnc-auth` base URL, so that `novnc-desktop-url` returns a URL containing the actual public address — not the build-time placeholder `default`. |
+| FR-8.10 | When a Let's Encrypt certificate is present (i.e. `novnc-setup-tls` has been run), `novnc-set-base-url.service` skips the metadata update on reboot so that the domain-based URL configured by `novnc-setup-tls` is preserved.                                                                                                     |
+
 ---
 
 ## Non-Functional Requirements
@@ -126,6 +161,81 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | NFR-3 | **No external API calls at access time.** Token validation is purely local (HMAC verification + timestamp check). The `novnc-auth` service makes no outbound requests. |
 | NFR-4 | **Composability.** The role exposes clean variable interfaces so it can be imported and overridden by a parent playbook (e.g. `ai-agent-desktop`) without forking.     |
 | NFR-5 | **Firewall by default.** UFW is enabled at the end of provisioning. Only SSH (22) and the configured public noVNC HTTP/HTTPS ports are permitted inbound.              |
+
+---
+
+## Acceptance Criteria
+
+Each AC maps to one or more Functional Requirements and is covered by a named
+smoke test. After running `pnpm test`, `.smoke-artifacts/verification.json`
+records whether each criterion passed for the specific AMI and commit under
+test. Agents and operators should read that file to confirm the system is
+verified rather than re-running the full suite.
+
+To find the test that covers an AC, search the codebase for the AC ID string
+(e.g. `grep -r "AC-TLS-01" smoke/`).
+
+### TLS and network
+
+| ID        | Requirement covered | Observable outcome                                                        |
+| --------- | ------------------- | ------------------------------------------------------------------------- |
+| AC-TLS-01 | FR-4.1              | HTTPS endpoint responds (status < 500)                                    |
+| AC-TLS-02 | FR-2.2              | HTTP request receives a `301` redirect to the HTTPS URL                   |
+| AC-TLS-03 | FR-3.2              | Access URL returned by `novnc-desktop-url` uses the configured HTTPS port |
+
+### Authentication and access control
+
+| ID         | Requirement covered | Observable outcome                                                       |
+| ---------- | ------------------- | ------------------------------------------------------------------------ |
+| AC-AUTH-01 | FR-2.3              | Unauthenticated `GET /` returns `302` to `/access`                       |
+| AC-AUTH-02 | FR-2.6              | `POST /generate` from an external address returns `403`                  |
+| AC-AUTH-03 | FR-3.3              | Visiting the access URL sets the auth cookie and redirects to `vnc.html` |
+
+### Desktop rendering
+
+| ID            | Requirement covered | Observable outcome                                            |
+| ------------- | ------------------- | ------------------------------------------------------------- |
+| AC-DESKTOP-01 | FR-5.1, FR-5.2      | VNC canvas renders the desktop; smoke marker xterm is visible |
+
+### Elementary (Pantheon) — verified only when `desktopType=elementary`
+
+| ID               | Requirement covered | Observable outcome                                        |
+| ---------------- | ------------------- | --------------------------------------------------------- |
+| AC-ELEMENTARY-01 | FR-5.4              | `gala` process restarts within 20 s after being killed    |
+| AC-ELEMENTARY-02 | FR-5.5              | Clicking the noVNC canvas focuses the `SMOKE_READY` xterm |
+
+### Direct Ansible provisioning — verified by `pnpm infra:up + provision:* + test`
+
+These criteria confirm the state of a host that was provisioned from scratch
+using `ansible-playbook site.yml`. They are satisfied when the commands and
+services required by FR-7 are present and running after the Ansible run
+completes.
+
+| ID            | Requirement covered | Observable outcome                                                                         |
+| ------------- | ------------------- | ------------------------------------------------------------------------------------------ |
+| AC-ANSIBLE-01 | FR-7.2              | `novnc-desktop-url` is present at `/usr/local/bin/novnc-desktop-url` and executable        |
+| AC-ANSIBLE-02 | FR-7.3              | `novnc-setup-tls` is present at `/usr/local/bin/novnc-setup-tls` and executable            |
+| AC-ANSIBLE-03 | FR-7.4              | `novnc-auth.service`, `nginx`, `novnc.service`, and `novnc-desktop.service` are all active |
+| AC-ANSIBLE-04 | FR-7.6              | `novnc-set-base-url` is present at `/usr/local/bin/novnc-set-base-url` and executable      |
+| AC-ANSIBLE-05 | FR-7.6              | `novnc-set-base-url.service` is enabled in systemd                                         |
+
+### AMI build and launch — verified by `pnpm infra:ami:* + provision:* + test`
+
+These criteria confirm the state of a host launched from a pre-built AMI.
+AC-AMI-01 is verified at build time by `build-ami.sh`. AC-AMI-02 through
+AC-AMI-04 are verified in two stages: first by an immediate SSH check in
+`infra-ami.sh` right after the instance becomes reachable (confirming the AMI
+baked the content in), and again by the full smoke suite.
+
+| ID        | Requirement covered | Observable outcome                                                                                                                             | Verified by                            |
+| --------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| AC-AMI-01 | FR-8.1              | AMI tagged with `Variant`, `Environment`, `Project=novnc-desktop`, and `BuildDate`                                                             | `build-ami.sh` output + AWS console    |
+| AC-AMI-02 | FR-8.3              | `novnc-desktop-url` present on AMI-launched instance before any Ansible post-launch run                                                        | `infra-ami.sh` SSH check + smoke suite |
+| AC-AMI-03 | FR-8.4              | `novnc-setup-tls` present on AMI-launched instance before any Ansible post-launch run                                                          | `infra-ami.sh` SSH check + smoke suite |
+| AC-AMI-04 | FR-8.5              | All required services active on AMI-launched instance before any Ansible post-launch run                                                       | `infra-ami.sh` SSH check + smoke suite |
+| AC-AMI-05 | FR-8.8              | `novnc-set-base-url` present at `/usr/local/bin/novnc-set-base-url` and executable on AMI-launched instance before any Ansible post-launch run | `infra-ami.sh` SSH check + smoke suite |
+| AC-AMI-06 | FR-8.8              | `novnc-set-base-url.service` is enabled and active on an AMI-launched instance                                                                 | `infra-ami.sh` SSH check + smoke suite |
+| AC-AMI-07 | FR-8.9              | After boot, the URL returned by `novnc-desktop-url` contains the instance's public IP or hostname — not the build-time placeholder `default`   | smoke suite                            |
 
 ---
 
@@ -224,7 +334,7 @@ SSH user
 - [ ] Configurable session idle timeout (nginx `proxy_read_timeout` + auth TTL alignment)
 - [ ] Health check endpoint (`GET /health`) on `novnc-auth` for monitoring
 - [ ] Ansible Galaxy publication as a standalone role (`markcallen.novnc_desktop`)
-- [ ] `novnc_base_url` auto-detection from public IP when not explicitly set
+- [x] `novnc_base_url` auto-detection from public IP when not explicitly set (`novnc-set-base-url.service` runs on every boot, skips when Let's Encrypt cert is present)
 
 ### Phase 4 — `ai-agent-desktop` integration
 

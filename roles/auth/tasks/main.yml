@@ -69,6 +69,36 @@
     group: root
     mode: '0755'
 
+- name: Install novnc-rotate-secret script
+  ansible.builtin.copy:
+    src: novnc-rotate-secret
+    dest: /usr/local/bin/novnc-rotate-secret
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install novnc-rotate-secret systemd unit
+  ansible.builtin.template:
+    src: novnc-rotate-secret.service.j2
+    dest: /etc/systemd/system/novnc-rotate-secret.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Install novnc-set-base-url script
+  ansible.builtin.copy:
+    src: novnc-set-base-url
+    dest: /usr/local/bin/novnc-set-base-url
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install novnc-set-base-url systemd unit
+  ansible.builtin.template:
+    src: novnc-set-base-url.service.j2
+    dest: /etc/systemd/system/novnc-set-base-url.service
+    mode: '0644'
+  notify: Reload systemd
+
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
@@ -77,3 +107,13 @@
     name: novnc-auth.service
     enabled: true
     state: started
+
+- name: Enable novnc-rotate-secret for first-boot execution
+  ansible.builtin.systemd:
+    name: novnc-rotate-secret.service
+    enabled: true
+
+- name: Enable novnc-set-base-url to run on every boot
+  ansible.builtin.systemd:
+    name: novnc-set-base-url.service
+    enabled: true

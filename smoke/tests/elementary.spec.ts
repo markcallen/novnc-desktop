@@ -78,6 +78,10 @@ test.describe('elementary', () => {
   );
 
   test('gala is restarted after it crashes', async ({ page }) => {
+    test.info().annotations.push({
+      type: 'requirement',
+      description: 'AC-ELEMENTARY-01'
+    });
     await page.goto(state.accessUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000
@@ -129,6 +133,10 @@ test.describe('elementary', () => {
   test('smoke marker xterm keeps keyboard focus through noVNC', async ({
     page
   }) => {
+    test.info().annotations.push({
+      type: 'requirement',
+      description: 'AC-ELEMENTARY-02'
+    });
     await page.goto(state.accessUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000

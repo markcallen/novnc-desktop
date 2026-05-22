@@ -209,6 +209,89 @@ Key variables:
 
 After provisioning, SSH in and run `novnc-desktop-url` to get a signed HTTPS URL for the desktop.
 
+### novnc-desktop meta-service
+
+The role installs a `novnc-desktop.service` systemd meta-service that manages the full stack (TigerVNC, noVNC, novnc-auth, nginx) as a single unit:
+
+```sh
+# Check if the full stack is up
+systemctl is-active novnc-desktop
+
+# Start or stop the entire stack
+systemctl start novnc-desktop
+systemctl stop novnc-desktop
+```
+
+Automation tools and user-data scripts should target `novnc-desktop` rather than individual services.
+
+## Pre-built AMIs
+
+Public AMIs for openbox and elementary variants are available for each release. See the [GitHub Releases](https://github.com/markcallen/novnc-desktop/releases) page for current AMI IDs by region.
+
+AMIs are built with `use_certbot: false` — a self-signed TLS certificate is baked in at build time, but no Let's Encrypt certificate is embedded. Pass a user-data script at launch to replace the self-signed cert with a real certificate for your domain.
+
+### Launch workflow
+
+1. **Choose an AMI** from the release notes for your region and desktop variant.
+
+2. **Prepare a user-data script** — copy `examples/user-metadata-certbot-example.sh` and set your domain and email at the top:
+
+   ```bash
+   #!/bin/bash
+   export CERTBOT_DOMAIN=myapp.example.com
+   export CERTBOT_EMAIL=admin@example.com
+   export NOVNC_HTTPS_PORT=443
+   # Paste the contents of examples/user-metadata-certbot-example.sh here
+   ```
+
+3. **Launch the instance** passing your script as user data:
+
+   ```sh
+   aws ec2 run-instances \
+     --image-id ami-XXXXXXXX \
+     --instance-type t3.medium \
+     --user-data file://user-data.sh \
+     --security-group-ids sg-XXXXXXXX
+   ```
+
+   Or via the EC2 console: Advanced Details → User data → paste your script.
+
+4. **Wait for the stack to start** (typically 2–3 minutes after launch). Check progress:
+
+   ```sh
+   ssh ubuntu@<public-ip> journalctl -u novnc-desktop -f
+   ```
+
+5. **Get your access URL**:
+
+   ```sh
+   ssh ubuntu@<public-ip> novnc-desktop-url
+   ```
+
+### Building AMIs
+
+To build both variants yourself:
+
+```sh
+# Build private AMIs (default)
+./build-ami.sh
+
+# Build public AMIs for distribution
+AMI_PUBLIC=true ./build-ami.sh
+
+# Custom prefix and region
+AMI_NAME_PREFIX=my-novnc AWS_REGION=us-west-2 AMI_PUBLIC=true ./build-ami.sh
+```
+
+| Variable          | Default                      | Description                                                         |
+| ----------------- | ---------------------------- | ------------------------------------------------------------------- |
+| `AWS_REGION`      | `us-east-1`                  | AWS region to build in                                              |
+| `INSTANCE_TYPE`   | `t3.medium`                  | EC2 instance type for the build                                     |
+| `AMI_NAME_PREFIX` | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary names                 |
+| `USE_CERTBOT`     | `false`                      | Run certbot at bake time (only for private AMIs)                    |
+| `AMI_PUBLIC`      | `false`                      | Make resulting AMIs publicly launchable                             |
+| `AMI_ENVIRONMENT` | `test`                       | `Environment` tag value; use `production` for public release builds |
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.

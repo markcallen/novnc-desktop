@@ -1,25 +1,72 @@
 #!/usr/bin/env bash
-# infra-ami.sh — launch EC2 instance from novnc-desktop AMI using Terraform
+# infra-ami.sh — launch EC2 instance from a novnc-desktop AMI using Terraform
 #
 # Usage:
-#   pnpm infra:ami [AMI_ID]
+#   pnpm infra:ami [OPTIONS] [AMI_ID]
 #
-# This script launches a pre-built novnc-desktop AMI using the same Terraform
-# configuration as infra:up, just with a pre-built AMI instead of vanilla Ubuntu.
-# Since the AMI already has the full stack installed, you can skip to testing:
+# Options:
+#   --variant <openbox|elementary>   Desktop variant to find (default: openbox)
+#   --http-port <port>               HTTP port (default: 80)
+#   --https-port <port>              HTTPS port (default: 443)
+#   --public                         Search for public (production) AMIs instead of test AMIs
 #
+# If AMI_ID is provided, --variant and --public are ignored for the lookup
+# but ports are still applied.
+#
+# Examples:
+#   pnpm infra:ami
+#   pnpm infra:ami --variant elementary
+#   pnpm infra:ami --variant elementary --http-port 8080 --https-port 8443 --public
 #   pnpm infra:ami ami-0613b782c7ff5544d
-#   pnpm test
-#
-# If no AMI_ID is provided, the script will find the most recent novnc-desktop AMI
-# tagged with Environment=test and Project=novnc-desktop.
 #
 # Optional environment variables:
-#   VNC_USER   SSH username on the EC2 instance (default: ubuntu).
+#   VNC_USER   SSH username on the EC2 instance (default: ubuntu)
 
 set -euo pipefail
 
 VNC_USER="${VNC_USER:-ubuntu}"
+VARIANT="openbox"
+HTTP_PORT=80
+HTTPS_PORT=443
+ENVIRONMENT="test"
+AMI_ID=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --variant)
+      VARIANT="$2"
+      shift 2
+      ;;
+    --http-port)
+      HTTP_PORT="$2"
+      shift 2
+      ;;
+    --https-port)
+      HTTPS_PORT="$2"
+      shift 2
+      ;;
+    --public)
+      ENVIRONMENT="production"
+      shift
+      ;;
+    --*)
+      echo "ERROR: Unknown option: $1" >&2
+      exit 1
+      ;;
+    *)
+      AMI_ID="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ "$VARIANT" != "openbox" && "$VARIANT" != "elementary" ]]; then
+  echo "ERROR: --variant must be 'openbox' or 'elementary'" >&2
+  exit 1
+fi
+
+LABEL="infra:ami"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TF_DIR="$REPO_ROOT/smoke/ec2"
@@ -29,64 +76,64 @@ ARTIFACTS_DIR="$REPO_ROOT/.smoke-artifacts"
 STATE_FILE="$STATE_DIR/state.json"
 SSH_KEY_PATH="$KEYS_DIR/smoke.pem"
 
-# Create local directories
 mkdir -p "$KEYS_DIR" "$STATE_DIR" "$ARTIFACTS_DIR"
 
-# Read terraform.tfvars for configuration
 if [[ ! -f "$TF_DIR/terraform.tfvars" ]]; then
   echo "ERROR: $TF_DIR/terraform.tfvars not found." >&2
   echo "Copy terraform.tfvars.example to terraform.tfvars and configure it." >&2
   exit 1
 fi
 
-# Extract AWS_REGION from terraform.tfvars
 AWS_REGION=$(grep 'aws_region' "$TF_DIR/terraform.tfvars" | grep -o '"[^"]*"' | head -1 | tr -d '"')
 if [[ -z "$AWS_REGION" ]]; then
   echo "ERROR: Could not read aws_region from terraform.tfvars" >&2
   exit 1
 fi
 
-# Use provided AMI_ID or find the most recent novnc-desktop AMI
-AMI_ID="${1:-}"
 if [[ -z "$AMI_ID" ]]; then
-  echo "[infra:ami] Finding most recent novnc-desktop AMI in $AWS_REGION..."
+  echo "[$LABEL] Finding most recent $VARIANT AMI (Environment=$ENVIRONMENT) in $AWS_REGION..."
   AMI_ID=$(aws ec2 describe-images \
     --region "$AWS_REGION" \
     --owners self \
-    --filters "Name=tag:Environment,Values=test" \
+    --filters "Name=tag:Environment,Values=$ENVIRONMENT" \
+              "Name=tag:Variant,Values=$VARIANT" \
               "Name=tag:Project,Values=novnc-desktop" \
               "Name=state,Values=available" \
     --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
     --output text)
 
   if [[ -z "$AMI_ID" || "$AMI_ID" == "None" ]]; then
-    echo "ERROR: No novnc-desktop AMI found with Environment=test and Project=novnc-desktop" >&2
-    echo "Build an AMI first with: ./build-ami.sh" >&2
+    echo "ERROR: No $VARIANT AMI found with Environment=$ENVIRONMENT, Project=novnc-desktop" >&2
+    if [[ "$ENVIRONMENT" == "production" ]]; then
+      echo "Build one with: NOVNC_HTTP_PORT=$HTTP_PORT NOVNC_HTTPS_PORT=$HTTPS_PORT AMI_PUBLIC=true AMI_ENVIRONMENT=production ./build-ami.sh" >&2
+    else
+      echo "Build one with: ./build-ami.sh" >&2
+    fi
     exit 1
   fi
 fi
 
-echo "[infra:ami] Using AMI: $AMI_ID"
+echo "[$LABEL] Using AMI:     $AMI_ID"
+echo "[$LABEL] Variant:       $VARIANT"
+echo "[$LABEL] HTTP port:     $HTTP_PORT"
+echo "[$LABEL] HTTPS port:    $HTTPS_PORT"
+echo "[$LABEL] Environment:   $ENVIRONMENT"
 
-# ---------------------------------------------------------------------------
-# Use Terraform to launch the instance from the AMI
-# ---------------------------------------------------------------------------
-echo "[infra:ami] Initializing Terraform..."
 cd "$TF_DIR"
 terraform init -input=false
 
-echo "[infra:ami] Applying Terraform with AMI $AMI_ID..."
-terraform apply -auto-approve -input=false -var "ami_id=$AMI_ID"
+echo "[$LABEL] Applying Terraform..."
+terraform apply -auto-approve -input=false \
+  -var "ami_id=$AMI_ID" \
+  -var "novnc_http_port=$HTTP_PORT" \
+  -var "novnc_https_port=$HTTPS_PORT"
 
 PUBLIC_IP=$(terraform output -raw public_ip)
 PUBLIC_DNS=$(terraform output -raw public_dns)
-echo "[infra:ami] Instance ready: $PUBLIC_IP ($PUBLIC_DNS)"
-echo "[infra:ami] SSH key written to $SSH_KEY_PATH"
+echo "[$LABEL] Instance ready: $PUBLIC_IP ($PUBLIC_DNS)"
+echo "[$LABEL] SSH key written to $SSH_KEY_PATH"
 
-# ---------------------------------------------------------------------------
-# Wait for SSH to become available
-# ---------------------------------------------------------------------------
-echo "[infra:ami] Waiting for SSH on $PUBLIC_IP..."
+echo "[$LABEL] Waiting for SSH on $PUBLIC_IP..."
 attempt=0
 while true; do
   attempt=$(( attempt + 1 ))
@@ -96,32 +143,196 @@ while true; do
       -o BatchMode=yes \
       -i "$SSH_KEY_PATH" \
       "$VNC_USER@$PUBLIC_IP" true 2>/dev/null; then
-    echo "[infra:ami] SSH is ready."
+    echo "[$LABEL] SSH is ready."
     break
   fi
   if [[ $attempt -ge 30 ]]; then
-    echo "[infra:ami] ERROR: SSH did not become ready after 5 minutes." >&2
+    echo "[$LABEL] ERROR: SSH did not become ready after 5 minutes." >&2
     exit 1
   fi
-  echo "[infra:ami] Attempt $attempt/30 — retrying in 10s..."
+  echo "[$LABEL] Attempt $attempt/30 — retrying in 10s..."
   sleep 10
 done
 
 # ---------------------------------------------------------------------------
-# Save infrastructure state
+# AMI content verification (AC-AMI-02, AC-AMI-03, AC-AMI-04)
+# Confirm required commands and services are baked into the AMI before any
+# Ansible post-launch run. Failures here indicate a broken AMI build.
 # ---------------------------------------------------------------------------
+echo ""
+echo "[$LABEL] Verifying AMI contents (pre-Ansible)..."
+
+SSH_OPTS=(-o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY_PATH")
+AMI_VERIFY_PASS=true
+
+for cmd in novnc-desktop-url novnc-set-base-url novnc-setup-tls; do
+  ac="AC-AMI-02/03/05"
+  if ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "test -x /usr/local/bin/$cmd" 2>/dev/null; then
+    echo "[$LABEL]   [PASS] /usr/local/bin/$cmd present ($ac)"
+  else
+    echo "[$LABEL]   [FAIL] /usr/local/bin/$cmd missing — AMI was not built with all roles" >&2
+    AMI_VERIFY_PASS=false
+  fi
+done
+
+for svc in novnc-auth.service nginx novnc.service novnc-desktop.service novnc-set-base-url.service; do
+  ac="AC-AMI-04/06"
+  if ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "systemctl is-active --quiet $svc" 2>/dev/null; then
+    echo "[$LABEL]   [PASS] $svc active ($ac)"
+  else
+    echo "[$LABEL]   [FAIL] $svc not active — AMI services did not start on boot" >&2
+    AMI_VERIFY_PASS=false
+  fi
+done
+
+if [[ "$AMI_VERIFY_PASS" == "false" ]]; then
+  echo ""
+  echo "[$LABEL] ERROR: AMI content verification failed. Rebuild the AMI with:" >&2
+  echo "  AMI_PUBLIC=true AMI_ENVIRONMENT=production ./build-ami.sh" >&2
+  exit 1
+fi
+
+echo "[$LABEL] AMI content verification passed."
+
+# ---------------------------------------------------------------------------
+# Ensure the auth service base_url reflects the actual public hostname and
+# the configured HTTPS port.  novnc-set-base-url.service already ran on boot
+# and set the hostname, but it reads the port from the baked-in config — if
+# the AMI was built with a different HTTPS port than the one requested here,
+# the URL would be wrong.  Override it now with the known values.
+# ---------------------------------------------------------------------------
+BASE_URL_EXPECTED="https://${PUBLIC_DNS}"
+if [[ "$HTTPS_PORT" != "443" ]]; then
+  BASE_URL_EXPECTED="https://${PUBLIC_DNS}:${HTTPS_PORT}"
+fi
+
+echo ""
+echo "[$LABEL] Setting auth base_url to $BASE_URL_EXPECTED..."
+ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "sudo python3 -" << PYEOF
+import json, os, stat
+path = '/etc/novnc-auth/config.json'
+new_url = '${BASE_URL_EXPECTED}'
+with open(path) as f:
+    d = json.load(f)
+if d.get('base_url') == new_url:
+    print('base_url already correct: ' + new_url)
+else:
+    d['base_url'] = new_url
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(d, f, indent=2)
+        f.write('\n')
+    st = os.stat(path)
+    os.chmod(tmp, stat.S_IMODE(st.st_mode))
+    os.chown(tmp, st.st_uid, st.st_gid)
+    os.replace(tmp, path)
+    print('base_url updated to: ' + new_url)
+PYEOF
+ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" sudo systemctl restart novnc-auth.service
+sleep 2
+
+# ---------------------------------------------------------------------------
+# Ensure nginx listens on the requested ports.  The AMI may have been baked
+# with different ports; patch the site config and reload if needed.
+# TODO: remove this hack once novnc-configure-userdata is implemented
+#       (see https://github.com/markcallen/novnc-desktop/issues/33).
+# ---------------------------------------------------------------------------
+echo ""
+echo "[$LABEL] Ensuring nginx listens on HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT..."
+ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" bash -s -- "$HTTP_PORT" "$HTTPS_PORT" << 'REMOTE'
+HTTP_PORT="$1"
+HTTPS_PORT="$2"
+CONF=/etc/nginx/sites-available/novnc
+
+CURRENT_HTTP=$(grep -oP '(?<=listen )\d+(?= default_server)' "$CONF" | head -1)
+CURRENT_HTTPS=$(grep -oP '(?<=listen )\d+(?= ssl)' "$CONF" | head -1)
+
+if [[ "$CURRENT_HTTP" == "$HTTP_PORT" && "$CURRENT_HTTPS" == "$HTTPS_PORT" ]]; then
+  echo "nginx ports already correct (HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT)"
+  exit 0
+fi
+
+echo "Patching nginx: HTTP $CURRENT_HTTP→$HTTP_PORT  HTTPS $CURRENT_HTTPS→$HTTPS_PORT"
+
+# Update listen ports
+sudo sed -i \
+  -e "s/listen ${CURRENT_HTTP} default_server;/listen ${HTTP_PORT} default_server;/g" \
+  -e "s/listen \[::\]:${CURRENT_HTTP} default_server;/listen [::]:${HTTP_PORT} default_server;/g" \
+  -e "s/listen ${CURRENT_HTTPS} ssl/listen ${HTTPS_PORT} ssl/g" \
+  -e "s/listen \[::\]:${CURRENT_HTTPS} ssl/listen [::]:${HTTPS_PORT} ssl/g" \
+  "$CONF"
+
+# Update HTTP→HTTPS redirect to include the non-standard HTTPS port.
+# The baked-in redirect is either:
+#   return 301 https://$host$request_uri;          (port 443, no port in URL)
+#   return 301 https://$host:<port>$request_uri;   (non-standard port)
+# Replace whatever is there with the correct target for the new HTTPS port.
+if [[ "$HTTPS_PORT" == "443" ]]; then
+  NEW_REDIRECT="return 301 https://\$host\$request_uri;"
+else
+  NEW_REDIRECT="return 301 https://\$host:${HTTPS_PORT}\$request_uri;"
+fi
+sudo sed -i "s|return 301 https://\\\$host[^;]*;|${NEW_REDIRECT}|g" "$CONF"
+
+sudo nginx -t && sudo systemctl reload nginx
+echo "nginx reloaded"
+REMOTE
+
+# ---------------------------------------------------------------------------
+# Ensure UFW allows the requested ports.  The AMI may have been baked with
+# different ports; add rules for any ports not already open.
+# TODO: remove this hack once novnc-configure-userdata is implemented
+#       (see https://github.com/markcallen/novnc-desktop/issues/33).
+# ---------------------------------------------------------------------------
+echo ""
+echo "[$LABEL] Ensuring UFW allows HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT..."
+ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" bash -s -- "$HTTP_PORT" "$HTTPS_PORT" << 'REMOTE'
+HTTP_PORT="$1"
+HTTPS_PORT="$2"
+
+for PORT in "$HTTP_PORT" "$HTTPS_PORT"; do
+  if sudo ufw status | grep -qE "^${PORT}/tcp\s+ALLOW"; then
+    echo "UFW already allows $PORT/tcp"
+  else
+    sudo ufw allow "${PORT}/tcp"
+    echo "UFW opened $PORT/tcp"
+  fi
+done
+REMOTE
+
+# ---------------------------------------------------------------------------
+# Fetch a time-limited desktop access URL and write it into state
+# ---------------------------------------------------------------------------
+echo ""
+echo "[$LABEL] Fetching desktop access URL..."
+DESKTOP_URL_OUTPUT=$(
+  ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" novnc-desktop-url
+)
+ACCESS_URL=$(echo "$DESKTOP_URL_OUTPUT" | awk '/Desktop URL/{print $NF}')
+
+if [[ -z "$ACCESS_URL" ]]; then
+  echo "[$LABEL] ERROR: Could not parse access URL from novnc-desktop-url output:" >&2
+  echo "$DESKTOP_URL_OUTPUT" >&2
+  exit 1
+fi
+
 cat > "$STATE_FILE" <<EOF
 {
   "publicIp": "$PUBLIC_IP",
   "publicDns": "$PUBLIC_DNS",
   "vncUser": "$VNC_USER",
   "sshKeyPath": "$SSH_KEY_PATH",
-  "amiId": "$AMI_ID"
+  "amiId": "$AMI_ID",
+  "variant": "$VARIANT",
+  "novncHttpPort": $HTTP_PORT,
+  "novncHttpsPort": $HTTPS_PORT,
+  "accessUrl": "$ACCESS_URL"
 }
 EOF
 
+echo "[$LABEL] State updated with accessUrl."
 echo ""
-echo "[infra:ami] State saved to $STATE_FILE"
+echo "Desktop: $ACCESS_URL"
 echo ""
 echo "Next: run the smoke tests:"
 echo "  pnpm test"

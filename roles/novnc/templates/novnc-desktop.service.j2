@@ -1,0 +1,13 @@
+[Unit]
+Description=noVNC Desktop Meta-Service (manages VNC + noVNC stack)
+Wants=tigervncserver@:{{ vnc_display }}.service novnc.service novnc-auth.service nginx.service
+After=tigervncserver@:{{ vnc_display }}.service novnc.service novnc-auth.service nginx.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/systemctl start tigervncserver@:{{ vnc_display }}.service novnc.service novnc-auth.service nginx.service
+ExecStop=/bin/systemctl stop novnc.service novnc-auth.service tigervncserver@:{{ vnc_display }}.service nginx.service
+
+[Install]
+WantedBy=multi-user.target
