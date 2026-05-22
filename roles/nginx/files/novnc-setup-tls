@@ -123,5 +123,11 @@ HOOK
 chmod +x "$HOOK_DIR/novnc-renew.sh"
 
 log "=== novnc-setup-tls complete ==="
+
+# Show overall stack status via the meta-service so operators can confirm all
+# sub-services (TigerVNC, noVNC, novnc-auth, nginx) are active.
+log "Stack status ($NOVNC_SERVICE):"
+systemctl status "$NOVNC_SERVICE" --no-pager 2>&1 | tee -a "$LOG_FILE" || true
+
 log "Run: sudo novnc-desktop-url"
 log "     to get your signed HTTPS access URL."
