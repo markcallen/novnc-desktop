@@ -2,9 +2,9 @@
 # Example EC2 user-data script for novnc-desktop AMIs built with use_certbot=false.
 #
 # The AMI ships /usr/local/bin/novnc-setup-tls which handles the full TLS
-# setup: obtains a Let's Encrypt certificate via the certbot nginx plugin,
-# patches the nginx config, updates the auth service base URL, and installs
-# an automatic renewal hook.
+# setup: obtains a Let's Encrypt certificate via the certbot DNS-01 plugin
+# (dns-route53), patches the nginx config, updates the auth service base URL,
+# and installs an automatic renewal hook.
 #
 # Usage — create a user-data file and prepend your environment variables:
 #

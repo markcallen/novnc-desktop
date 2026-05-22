@@ -40,12 +40,14 @@ test.describe('desktop', () => {
     expect(response?.status()).toBeLessThan(400);
   });
 
-  test.skip('VNC canvas renders desktop with smoke marker', async ({
-    page
-  }) => {
+  test('VNC canvas renders desktop with smoke marker', async ({ page }) => {
     test
       .info()
       .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-01' });
+    test.skip(
+      state.desktopType === undefined,
+      'Smoke marker test requires infra:up (smoke_test_marker_enabled=true); skipped for AMI smoke runs'
+    );
     await page.goto(accessUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000

@@ -32,7 +32,7 @@ setup-check:
 	@printf "  %-14s %s\n" "pnpm:"      "$$(pnpm --version 2>/dev/null || echo 'not found')"
 	@printf "  %-14s %s\n" "terraform:" "$$(terraform --version 2>/dev/null | head -1 | sed 's/Terraform v//' || echo 'not found')"
 	@printf "  %-14s %s\n" "packer:"    "$$(packer --version 2>/dev/null | sed 's/Packer v//' || echo 'not found')"
-	@printf "  %-14s %s\n" "python:"    "$$(python3.10 --version 2>/dev/null || echo 'not found')"
+	@printf "  %-14s %s\n" "python:"    "$$(python3 --version 2>/dev/null || echo 'not found')"
 	@printf "  %-14s %s\n" "playwright:" "$$(pnpm exec playwright --version 2>/dev/null | sed 's/Version //' || echo 'not found')"
 
 # ---------------------------------------------------------------------------

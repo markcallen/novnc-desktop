@@ -9,7 +9,7 @@ AMIs built with `use_certbot: false` (the default for public AMIs) ship with a
 self-signed certificate. The AMI includes `/usr/local/bin/novnc-setup-tls`, which
 handles the complete TLS setup at launch time:
 
-1. Obtains a certificate from Let's Encrypt via the certbot nginx plugin.
+1. Obtains a certificate from Let's Encrypt via DNS-01 challenge (certbot dns-route53 plugin).
 2. Patches the nginx site config to serve the real certificate.
 3. Updates the auth service `base_url` so `novnc-desktop-url` generates correct links.
 4. Installs an automatic renewal hook.
@@ -106,7 +106,7 @@ resource "aws_instance" "novnc_with_tls" {
 
 1. **User-data runs** as root during instance initialization.
 2. **`/usr/local/bin/novnc-setup-tls` is called**, which:
-   - Runs `certbot --nginx` to obtain a certificate and patch the nginx config.
+   - Runs `certbot --dns-route53` to obtain a certificate via DNS-01 challenge.
    - Updates `/etc/novnc-auth/config.json` with the correct `base_url`.
    - Installs a renewal post-hook at `/etc/letsencrypt/renewal-hooks/post/novnc-renew.sh`.
 3. **novnc-auth restarts** to reload its config.
@@ -138,10 +138,11 @@ sudo novnc-desktop-url
 
 #### Certificate acquisition failed
 
-**Cause**: Port 80 not reachable, or DNS not propagated to this instance's IP.
+**Cause**: Route53 permissions missing, DNS not propagated, or the hosted zone
+not found for the requested domain.
 
 **Solution**:
-- Check security group allows inbound TCP on port 80 from `0.0.0.0/0`.
+- Confirm the EC2 instance has the `novnc-desktop-certbot` IAM role attached.
 - Verify `dig +short myapp.example.com` returns this instance's public IP.
 - Re-run manually: `sudo CERTBOT_DOMAIN=myapp.example.com /usr/local/bin/novnc-setup-tls`
 
@@ -169,7 +170,6 @@ sudo certbot renew --force-renewal
 
 ### Security Considerations
 
-1. Restrict inbound port 80 to `0.0.0.0/0` only during initial validation; tighten afterwards.
-2. Keep `/etc/letsencrypt/` private — never expose private keys.
-3. Use a monitored email address for Let's Encrypt expiry notifications.
-4. Restrict SSH access (`port 22`) to known IP ranges in the security group.
+1. Keep `/etc/letsencrypt/` private — never expose private keys.
+2. Use a monitored email address for Let's Encrypt expiry notifications.
+3. Restrict SSH access (`port 22`) to known IP ranges in the security group.
