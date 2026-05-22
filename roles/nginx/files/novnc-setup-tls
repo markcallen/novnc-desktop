@@ -67,11 +67,11 @@ CERT_DIR="/etc/letsencrypt/live/$CERTBOT_DOMAIN"
 # Patch the nginx site to use the Let's Encrypt certificate instead of the
 # self-signed one that was baked into the AMI.
 log "Updating nginx configuration to use Let's Encrypt certificate..."
-sed -i \
-  "s|ssl_certificate .*;|ssl_certificate     ${CERT_DIR}/fullchain.pem;|" \
+sed -i -E \
+  "s|^([[:space:]]*)ssl_certificate[[:space:]]+.*;|\1ssl_certificate     ${CERT_DIR}/fullchain.pem;|" \
   "$NGINX_SITE"
-sed -i \
-  "s|ssl_certificate_key .*;|ssl_certificate_key ${CERT_DIR}/privkey.pem;|" \
+sed -i -E \
+  "s|^([[:space:]]*)ssl_certificate_key[[:space:]]+.*;|\1ssl_certificate_key ${CERT_DIR}/privkey.pem;|" \
   "$NGINX_SITE"
 
 nginx -t 2>&1 | tee -a "$LOG_FILE"

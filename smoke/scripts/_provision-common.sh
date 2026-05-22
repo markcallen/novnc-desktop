@@ -92,7 +92,7 @@ cd "$REPO_ROOT"
 # ---------------------------------------------------------------------------
 _ANSIBLE_TLS_VARS=""
 if [[ -n "$_STATE_TLS_DOMAIN" ]]; then
-  _ANSIBLE_TLS_VARS=" use_certbot=true tls_domain=$_STATE_TLS_DOMAIN letsencrypt_email=mark@markcallen.dev"
+  _ANSIBLE_TLS_VARS=" use_certbot=true tls_domain=$_STATE_TLS_DOMAIN letsencrypt_email=${LETSENCRYPT_EMAIL}"
   echo "[provision:$DESKTOP_TYPE] TLS domain detected: $_STATE_TLS_DOMAIN (certbot enabled)"
 fi
 

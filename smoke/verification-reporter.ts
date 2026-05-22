@@ -41,7 +41,7 @@ class VerificationReporter implements Reporter {
   private readonly criteria: Record<string, CriterionResult> = {};
 
   onTestEnd(test: TestCase, result: TestResult): void {
-    const requirements = result.annotations
+    const requirements = test.annotations
       .filter((a) => a.type === 'requirement')
       .map((a) => a.description ?? '')
       .filter(Boolean);
@@ -107,7 +107,7 @@ class VerificationReporter implements Reporter {
       commit,
       ami_id: amiId,
       variant,
-      overall: hasFailure || result.status === 'failed' ? 'fail' : 'pass',
+      overall: hasFailure || result.status !== 'passed' ? 'fail' : 'pass',
       criteria: this.criteria
     };
 

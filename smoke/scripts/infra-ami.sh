@@ -242,7 +242,7 @@ echo "[$LABEL] Ensuring nginx listens on HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT..."
 ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" bash -s -- "$HTTP_PORT" "$HTTPS_PORT" << 'REMOTE'
 HTTP_PORT="$1"
 HTTPS_PORT="$2"
-CONF=/etc/nginx/sites-enabled/novnc
+CONF=/etc/nginx/sites-available/novnc
 
 CURRENT_HTTP=$(grep -oP '(?<=listen )\d+(?= default_server)' "$CONF" | head -1)
 CURRENT_HTTPS=$(grep -oP '(?<=listen )\d+(?= ssl)' "$CONF" | head -1)
