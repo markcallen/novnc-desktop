@@ -52,7 +52,7 @@ DRY_RUN=false
 
 usage() {
     cat <<'EOF'
-Usage: ./build-ami.sh [--dry-run]
+Usage: ./build-ami.sh [--dry-run|-n] [--help|-h]
 
 Options:
   --dry-run, -n   Print planned actions and packer commands without executing.
@@ -142,7 +142,11 @@ run_cmd packer validate \
     packer.pkr.hcl
 
 echo ""
-echo "Configuration valid. Building AMIs..."
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "Dry run: validation command prepared. Build command preview follows..."
+else
+    echo "Configuration valid. Building AMIs..."
+fi
 echo ""
 
 # Format the configuration
@@ -164,7 +168,11 @@ run_cmd packer build \
 
 echo ""
 echo "=========================================="
-echo "Build complete!"
+if [[ "$DRY_RUN" == "true" ]]; then
+    echo "Dry run complete! No AMIs were built."
+else
+    echo "Build complete!"
+fi
 echo "AMI Name Prefix: $AMI_NAME_PREFIX"
 echo "Variants built:  openbox, elementary"
 echo "=========================================="
