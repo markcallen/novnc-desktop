@@ -235,7 +235,7 @@ if [[ "$CURRENT_HTTP" != "$TARGET_HTTP_PORT" || "$CURRENT_HTTPS" != "$TARGET_HTT
   if [[ "$TARGET_HTTPS_PORT" == "443" ]]; then
     NEW_REDIRECT='return 301 https://$host$request_uri;'
   else
-    NEW_REDIRECT="return 301 https://\\$host:${TARGET_HTTPS_PORT}\\$request_uri;"
+    NEW_REDIRECT='return 301 https://$host:'"${TARGET_HTTPS_PORT}"'$request_uri;'
   fi
   sed -i "s|return 301 https://\\\$host[^;]*;|${NEW_REDIRECT}|g" "$NGINX_CONF"
 
