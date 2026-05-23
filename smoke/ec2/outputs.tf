@@ -30,5 +30,5 @@ output "ssh_key_path" {
 
 output "tls_hostname" {
   description = "FQDN of the random subdomain created for Let's Encrypt (empty when tls_zone is not set)."
-  value       = var.tls_zone != "" ? trimsuffix(aws_route53_record.tls[0].fqdn, ".") : ""
+  value       = trimspace(var.tls_zone) != "" ? trimsuffix(aws_route53_record.tls[0].fqdn, ".") : ""
 }

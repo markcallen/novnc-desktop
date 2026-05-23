@@ -81,9 +81,13 @@ locals {
   resource_name       = "${var.name_prefix}-${local.stack_name}"
   http_ingress_ports  = distinct([80, var.novnc_http_port])
   https_ingress_ports = distinct([443, var.novnc_https_port])
+  novnc_hostname_trim = trimspace(var.novnc_hostname)
   tls_zone_normalized = trimsuffix(trimspace(var.tls_zone), ".")
-  generated_tls_hostname = var.tls_zone != "" ? "${random_pet.tls_host[0].id}.${local.tls_zone_normalized}" : ""
-  effective_novnc_hostname = local.generated_tls_hostname != "" ? local.generated_tls_hostname : (trimspace(var.novnc_hostname) != "" ? var.novnc_hostname : null)
+  tls_enabled            = local.tls_zone_normalized != ""
+  generated_tls_hostname = local.tls_enabled ? "${random_pet.tls_host[0].id}.${local.tls_zone_normalized}" : ""
+  effective_novnc_hostname = local.generated_tls_hostname != "" ? local.generated_tls_hostname : (
+    local.novnc_hostname_trim != "" ? local.novnc_hostname_trim : null
+  )
   user_data_json = jsonencode({
     novnc_http_port   = var.novnc_http_port
     novnc_https_port  = var.novnc_https_port
@@ -196,18 +200,18 @@ resource "aws_instance" "smoke" {
 # terraform destroy removes both the A record and the random resource.
 # ---------------------------------------------------------------------------
 resource "random_pet" "tls_host" {
-  count     = var.tls_zone != "" ? 1 : 0
+  count     = local.tls_enabled ? 1 : 0
   length    = 2
   separator = "-"
 }
 
 data "aws_route53_zone" "tls" {
-  count = var.tls_zone != "" ? 1 : 0
+  count = local.tls_enabled ? 1 : 0
   name  = local.tls_zone_normalized
 }
 
 resource "aws_route53_record" "tls" {
-  count   = var.tls_zone != "" ? 1 : 0
+  count   = local.tls_enabled ? 1 : 0
   zone_id = data.aws_route53_zone.tls[0].zone_id
   name    = "${random_pet.tls_host[0].id}.${local.tls_zone_normalized}"
   type    = "A"

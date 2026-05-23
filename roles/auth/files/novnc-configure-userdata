@@ -38,9 +38,8 @@ valid_port() {
 
 TOKEN=$(curl -sf --connect-timeout 5 -X PUT "$IMDS/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 30" 2>/dev/null) || TOKEN=""
 if [[ -z "$TOKEN" ]]; then
-  log "IMDSv2 token unavailable; skipping."
-  touch "$SENTINEL"
-  exit 0
+  log "IMDSv2 token unavailable; deferring configuration for retry."
+  exit 1
 fi
 
 RAW_USER_DATA=$(curl -sf --connect-timeout 5 -H "X-aws-ec2-metadata-token: $TOKEN" "$IMDS/user-data" 2>/dev/null) || RAW_USER_DATA=""
