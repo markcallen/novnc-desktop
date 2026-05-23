@@ -1,0 +1,14 @@
+[Unit]
+Description=Configure noVNC from EC2 user-data on first boot
+After=network-online.target
+Wants=network-online.target
+Before=novnc-set-base-url.service novnc-auth.service
+ConditionPathExists=!/var/lib/novnc-auth/.userdata-applied
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/novnc-configure-userdata
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

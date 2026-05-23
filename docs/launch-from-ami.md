@@ -11,6 +11,12 @@ via EC2 user-data.
 - An IAM instance profile with Route53 permissions — see [route53-iam-setup.md](./route53-iam-setup.md)
 - The AMI ID for your region — see [GitHub Releases](https://github.com/markcallen/novnc-desktop/releases)
 
+Before launch, create/verify the IAM profile + Route53 zone:
+
+```bash
+bash smoke/scripts/setup-certbot-route53.sh --zone smoke.markcallen.dev
+```
+
 ## Required IAM Permissions
 
 The IAM user or role running these commands needs the following EC2 permissions.

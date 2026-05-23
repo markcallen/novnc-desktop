@@ -104,9 +104,15 @@ os.replace(tmp, path)
 print("base_url updated to $BASE_URL")
 PYEOF
 
-# Restart novnc-auth so it reloads config.json with the new base_url.
-log "Restarting novnc-auth..."
-systemctl restart novnc-auth
+# Reload novnc-auth config if the service is already running. On first boot,
+# novnc-configure-userdata runs before novnc-auth and a hard restart here can
+# deadlock systemd ordering.
+if systemctl is-active --quiet novnc-auth; then
+  log "Restarting novnc-auth..."
+  systemctl restart novnc-auth
+else
+  log "novnc-auth is not active yet; skipping restart (it will start via normal boot ordering)."
+fi
 
 # Install a post-renewal hook so nginx picks up renewed certs automatically
 # and novnc-auth restarts to stay in sync.

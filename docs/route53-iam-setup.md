@@ -8,7 +8,30 @@ port 80 required.
 The EC2 instance must have an IAM role attached with permission to manage that
 TXT record in Route53.
 
-## Step 1 — Create the IAM policy
+## Quick setup (recommended)
+
+Use the helper script to create/update IAM resources and verify Route53:
+
+```bash
+bash smoke/scripts/setup-certbot-route53.sh --zone smoke.markcallen.dev
+```
+
+The script is idempotent and ensures:
+
+- IAM policy `novnc-certbot-route53`
+- IAM role `novnc-desktop-certbot`
+- IAM instance profile `novnc-desktop-certbot`
+- Route53 hosted zone exists in the current account
+
+You can also verify a specific domain (finds matching parent zone):
+
+```bash
+bash smoke/scripts/setup-certbot-route53.sh --domain myapp.example.com
+```
+
+## Manual setup (advanced / fallback)
+
+### Step 1 — Create the IAM policy
 
 Save the following as `novnc-certbot-route53-policy.json`:
 
@@ -46,7 +69,7 @@ echo "Policy ARN: $POLICY_ARN"
 > with the zone ARN:
 > `"Resource": "arn:aws:route53:::hostedzone/ZXXXXXXXXXXXXX"`
 
-## Step 2 — Create the IAM role
+### Step 2 — Create the IAM role
 
 ```bash
 # Create a trust policy allowing EC2 instances to assume this role
@@ -85,7 +108,7 @@ aws iam add-role-to-instance-profile \
   --role-name novnc-desktop-certbot
 ```
 
-## Step 3 — Attach the instance profile at launch
+### Step 3 — Attach the instance profile at launch
 
 Pass `--iam-instance-profile` when running the instance:
 
@@ -104,7 +127,7 @@ aws ec2 run-instances \
   --output text
 ```
 
-## Step 4 — Verify the hosted zone
+### Step 4 — Verify the hosted zone
 
 The domain you pass as `CERTBOT_DOMAIN` must have a public hosted zone in
 Route53 in the **same AWS account** as the instance. Certbot discovers the zone

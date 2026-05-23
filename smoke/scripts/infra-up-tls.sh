@@ -36,6 +36,19 @@ VNC_USER="${VNC_USER:-ubuntu}"
 mkdir -p "$KEYS_DIR" "$STATE_DIR" "$ARTIFACTS_DIR"
 
 # ---------------------------------------------------------------------------
+# 0. Preflight — verify Route53 hosted zone exists in this AWS account
+# ---------------------------------------------------------------------------
+if aws route53 list-hosted-zones \
+  --query "HostedZones[?Name=='${TLS_ZONE}.'].[Id,Name]" \
+  --output text | grep -q .; then
+  echo "[$LABEL] Verified Route53 hosted zone: ${TLS_ZONE}."
+else
+  echo "[$LABEL] ERROR: Route53 hosted zone not found: ${TLS_ZONE}." >&2
+  echo "[$LABEL] Run: bash smoke/scripts/setup-certbot-route53.sh --zone ${TLS_ZONE}" >&2
+  exit 1
+fi
+
+# ---------------------------------------------------------------------------
 # 1. Terraform — create EC2, SSH key, and Route53 A record
 # ---------------------------------------------------------------------------
 echo "[$LABEL] Initializing Terraform..."

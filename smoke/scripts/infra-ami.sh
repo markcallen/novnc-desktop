@@ -8,6 +8,11 @@
 #   --variant <openbox|elementary>   Desktop variant to find (default: openbox)
 #   --http-port <port>               HTTP port (default: 80)
 #   --https-port <port>              HTTPS port (default: 443)
+#   --domain <zone>                  Parent Route53 zone (e.g. smoke.markcallen.dev)
+#   --certbot-email <email>          Email used for certbot registration/renewal
+#   --iam-instance-profile <name>    IAM instance profile name for EC2
+#   --use-certbot                    Force certbot on first boot (requires domain)
+#   --no-certbot                     Force certbot off on first boot
 #   --public                         Search for public (production) AMIs instead of test AMIs
 #
 # If AMI_ID is provided, --variant and --public are ignored for the lookup
@@ -16,15 +21,27 @@
 # Examples:
 #   pnpm infra:ami
 #   pnpm infra:ami --variant elementary
+#   pnpm infra:ami --domain smoke.markcallen.dev --public
+#   pnpm infra:ami --domain smoke.markcallen.dev --certbot-email admin@example.com --public
+#   pnpm infra:ami --domain smoke.markcallen.dev --iam-instance-profile novnc-desktop-certbot --public
 #   pnpm infra:ami --variant elementary --http-port 8080 --https-port 8443 --public
 #   pnpm infra:ami ami-0613b782c7ff5544d
 #
 # Optional environment variables:
 #   VNC_USER   SSH username on the EC2 instance (default: ubuntu)
+#   NOVNC_HOSTNAME      Optional explicit hostname passed in EC2 user-data JSON.
+#   TLS_ZONE            Optional Route53 zone used to generate unique hostname.
+#   NOVNC_CERTBOT_EMAIL Optional certbot email passed in EC2 user-data JSON.
+#   NOVNC_USE_CERTBOT   true|false to trigger novnc-setup-tls on first boot.
 
 set -euo pipefail
 
 VNC_USER="${VNC_USER:-ubuntu}"
+NOVNC_HOSTNAME="${NOVNC_HOSTNAME:-}"
+TLS_ZONE="${TLS_ZONE:-}"
+NOVNC_CERTBOT_EMAIL="${NOVNC_CERTBOT_EMAIL:-}"
+NOVNC_USE_CERTBOT="${NOVNC_USE_CERTBOT:-}"
+IAM_INSTANCE_PROFILE="${IAM_INSTANCE_PROFILE:-}"
 VARIANT="openbox"
 HTTP_PORT=80
 HTTPS_PORT=443
@@ -46,6 +63,26 @@ while [[ $# -gt 0 ]]; do
       HTTPS_PORT="$2"
       shift 2
       ;;
+    --domain)
+      TLS_ZONE="$2"
+      shift 2
+      ;;
+    --certbot-email)
+      NOVNC_CERTBOT_EMAIL="$2"
+      shift 2
+      ;;
+    --iam-instance-profile)
+      IAM_INSTANCE_PROFILE="$2"
+      shift 2
+      ;;
+    --use-certbot)
+      NOVNC_USE_CERTBOT="true"
+      shift
+      ;;
+    --no-certbot)
+      NOVNC_USE_CERTBOT="false"
+      shift
+      ;;
     --public)
       ENVIRONMENT="production"
       shift
@@ -63,6 +100,32 @@ done
 
 if [[ "$VARIANT" != "openbox" && "$VARIANT" != "elementary" ]]; then
   echo "ERROR: --variant must be 'openbox' or 'elementary'" >&2
+  exit 1
+fi
+
+# If a domain was supplied, default to certbot-enabled unless explicitly
+# overridden by --no-certbot or NOVNC_USE_CERTBOT=false.
+# With a TLS zone, default to certbot=true unless explicitly overridden.
+if [[ -n "$TLS_ZONE" && -z "$NOVNC_USE_CERTBOT" ]]; then
+  NOVNC_USE_CERTBOT="true"
+fi
+
+if [[ "$NOVNC_USE_CERTBOT" == "true" && -z "$TLS_ZONE" && -z "$NOVNC_HOSTNAME" ]]; then
+  echo "ERROR: certbot requires a domain. Set --domain <zone> or NOVNC_HOSTNAME." >&2
+  exit 1
+fi
+
+if [[ -z "$NOVNC_USE_CERTBOT" ]]; then
+  NOVNC_USE_CERTBOT="false"
+fi
+
+if [[ "$NOVNC_USE_CERTBOT" == "true" && -z "$IAM_INSTANCE_PROFILE" ]]; then
+  IAM_INSTANCE_PROFILE="novnc-desktop-certbot"
+fi
+
+if [[ "$NOVNC_USE_CERTBOT" == "true" && -z "$NOVNC_CERTBOT_EMAIL" ]]; then
+  echo "ERROR: certbot is enabled but no email was provided." >&2
+  echo "Set --certbot-email <valid-email> (or NOVNC_CERTBOT_EMAIL)." >&2
   exit 1
 fi
 
@@ -118,6 +181,11 @@ echo "[$LABEL] Variant:       $VARIANT"
 echo "[$LABEL] HTTP port:     $HTTP_PORT"
 echo "[$LABEL] HTTPS port:    $HTTPS_PORT"
 echo "[$LABEL] Environment:   $ENVIRONMENT"
+echo "[$LABEL] TLS zone:      ${TLS_ZONE:-<none>}"
+echo "[$LABEL] Hostname:      ${NOVNC_HOSTNAME:-<auto/imds>}"
+echo "[$LABEL] Certbot email: ${NOVNC_CERTBOT_EMAIL:-<default>}"
+echo "[$LABEL] Use certbot:   $NOVNC_USE_CERTBOT"
+echo "[$LABEL] IAM profile:   ${IAM_INSTANCE_PROFILE:-<none>}"
 
 cd "$TF_DIR"
 terraform init -input=false
@@ -126,11 +194,23 @@ echo "[$LABEL] Applying Terraform..."
 terraform apply -auto-approve -input=false \
   -var "ami_id=$AMI_ID" \
   -var "novnc_http_port=$HTTP_PORT" \
-  -var "novnc_https_port=$HTTPS_PORT"
+  -var "novnc_https_port=$HTTPS_PORT" \
+  -var "novnc_hostname=$NOVNC_HOSTNAME" \
+  -var "tls_zone=$TLS_ZONE" \
+  -var "novnc_certbot_email=$NOVNC_CERTBOT_EMAIL" \
+  -var "novnc_use_certbot=$NOVNC_USE_CERTBOT" \
+  -var "iam_instance_profile=$IAM_INSTANCE_PROFILE"
 
 PUBLIC_IP=$(terraform output -raw public_ip)
 PUBLIC_DNS=$(terraform output -raw public_dns)
+TLS_HOSTNAME=$(terraform output -raw tls_hostname || true)
+if [[ -z "$TLS_HOSTNAME" ]]; then
+  TLS_HOSTNAME="$NOVNC_HOSTNAME"
+fi
 echo "[$LABEL] Instance ready: $PUBLIC_IP ($PUBLIC_DNS)"
+if [[ -n "$TLS_HOSTNAME" ]]; then
+  echo "[$LABEL] TLS hostname:  $TLS_HOSTNAME"
+fi
 echo "[$LABEL] SSH key written to $SSH_KEY_PATH"
 
 echo "[$LABEL] Waiting for SSH on $PUBLIC_IP..."
@@ -154,6 +234,21 @@ while true; do
   sleep 10
 done
 
+# Wait for first-boot userdata configuration to settle. Certbot DNS-01 can
+# keep this service in "activating" for a while.
+echo "[$LABEL] Waiting for first-boot userdata configuration to settle..."
+for attempt in $(seq 1 60); do
+  USERDATA_STATE=$(ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY_PATH" "$VNC_USER@$PUBLIC_IP" \
+    "systemctl is-active novnc-configure-userdata.service 2>/dev/null || true" 2>/dev/null | tr -d '\r')
+  if [[ "$USERDATA_STATE" == "activating" ]]; then
+    echo "[$LABEL]   novnc-configure-userdata is still activating (attempt $attempt/60)..."
+    sleep 5
+    continue
+  fi
+  echo "[$LABEL]   novnc-configure-userdata state: ${USERDATA_STATE:-unknown}"
+  break
+done
+
 # ---------------------------------------------------------------------------
 # AMI content verification (AC-AMI-02, AC-AMI-03, AC-AMI-04)
 # Confirm required commands and services are baked into the AMI before any
@@ -164,8 +259,9 @@ echo "[$LABEL] Verifying AMI contents (pre-Ansible)..."
 
 SSH_OPTS=(-o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY_PATH")
 AMI_VERIFY_PASS=true
+VERIFY_FAILURE_REASON=""
 
-for cmd in novnc-desktop-url novnc-set-base-url novnc-setup-tls; do
+for cmd in novnc-desktop-url novnc-set-base-url novnc-configure-userdata novnc-setup-tls; do
   ac="AC-AMI-02/03/05"
   if ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "test -x /usr/local/bin/$cmd" 2>/dev/null; then
     echo "[$LABEL]   [PASS] /usr/local/bin/$cmd present ($ac)"
@@ -187,133 +283,23 @@ done
 
 if [[ "$AMI_VERIFY_PASS" == "false" ]]; then
   echo ""
-  echo "[$LABEL] ERROR: AMI content verification failed. Rebuild the AMI with:" >&2
-  echo "  AMI_PUBLIC=true AMI_ENVIRONMENT=production ./build-ami.sh" >&2
-  exit 1
-fi
-
-echo "[$LABEL] AMI content verification passed."
-
-# ---------------------------------------------------------------------------
-# Ensure the auth service base_url reflects the actual public hostname and
-# the configured HTTPS port.  novnc-set-base-url.service already ran on boot
-# and set the hostname, but it reads the port from the baked-in config — if
-# the AMI was built with a different HTTPS port than the one requested here,
-# the URL would be wrong.  Override it now with the known values.
-# ---------------------------------------------------------------------------
-BASE_URL_EXPECTED="https://${PUBLIC_DNS}"
-if [[ "$HTTPS_PORT" != "443" ]]; then
-  BASE_URL_EXPECTED="https://${PUBLIC_DNS}:${HTTPS_PORT}"
-fi
-
-echo ""
-echo "[$LABEL] Setting auth base_url to $BASE_URL_EXPECTED..."
-ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" "sudo python3 -" << PYEOF
-import json, os, stat
-path = '/etc/novnc-auth/config.json'
-new_url = '${BASE_URL_EXPECTED}'
-with open(path) as f:
-    d = json.load(f)
-if d.get('base_url') == new_url:
-    print('base_url already correct: ' + new_url)
-else:
-    d['base_url'] = new_url
-    tmp = path + '.tmp'
-    with open(tmp, 'w') as f:
-        json.dump(d, f, indent=2)
-        f.write('\n')
-    st = os.stat(path)
-    os.chmod(tmp, stat.S_IMODE(st.st_mode))
-    os.chown(tmp, st.st_uid, st.st_gid)
-    os.replace(tmp, path)
-    print('base_url updated to: ' + new_url)
-PYEOF
-ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" sudo systemctl restart novnc-auth.service
-sleep 2
-
-# ---------------------------------------------------------------------------
-# Ensure nginx listens on the requested ports.  The AMI may have been baked
-# with different ports; patch the site config and reload if needed.
-# TODO: remove this hack once novnc-configure-userdata is implemented
-#       (see https://github.com/markcallen/novnc-desktop/issues/33).
-# ---------------------------------------------------------------------------
-echo ""
-echo "[$LABEL] Ensuring nginx listens on HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT..."
-ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" bash -s -- "$HTTP_PORT" "$HTTPS_PORT" << 'REMOTE'
-HTTP_PORT="$1"
-HTTPS_PORT="$2"
-CONF=/etc/nginx/sites-available/novnc
-
-CURRENT_HTTP=$(grep -oP '(?<=listen )\d+(?= default_server)' "$CONF" | head -1)
-CURRENT_HTTPS=$(grep -oP '(?<=listen )\d+(?= ssl)' "$CONF" | head -1)
-
-if [[ "$CURRENT_HTTP" == "$HTTP_PORT" && "$CURRENT_HTTPS" == "$HTTPS_PORT" ]]; then
-  echo "nginx ports already correct (HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT)"
-  exit 0
-fi
-
-echo "Patching nginx: HTTP $CURRENT_HTTP→$HTTP_PORT  HTTPS $CURRENT_HTTPS→$HTTPS_PORT"
-
-# Update listen ports
-sudo sed -i \
-  -e "s/listen ${CURRENT_HTTP} default_server;/listen ${HTTP_PORT} default_server;/g" \
-  -e "s/listen \[::\]:${CURRENT_HTTP} default_server;/listen [::]:${HTTP_PORT} default_server;/g" \
-  -e "s/listen ${CURRENT_HTTPS} ssl/listen ${HTTPS_PORT} ssl/g" \
-  -e "s/listen \[::\]:${CURRENT_HTTPS} ssl/listen [::]:${HTTPS_PORT} ssl/g" \
-  "$CONF"
-
-# Update HTTP→HTTPS redirect to include the non-standard HTTPS port.
-# The baked-in redirect is either:
-#   return 301 https://$host$request_uri;          (port 443, no port in URL)
-#   return 301 https://$host:<port>$request_uri;   (non-standard port)
-# Replace whatever is there with the correct target for the new HTTPS port.
-if [[ "$HTTPS_PORT" == "443" ]]; then
-  NEW_REDIRECT="return 301 https://\$host\$request_uri;"
+  VERIFY_FAILURE_REASON="AMI content verification failed"
+  echo "[$LABEL] WARNING: AMI content verification failed; continuing so state is still written." >&2
 else
-  NEW_REDIRECT="return 301 https://\$host:${HTTPS_PORT}\$request_uri;"
+  echo "[$LABEL] AMI content verification passed."
 fi
-sudo sed -i "s|return 301 https://\\\$host[^;]*;|${NEW_REDIRECT}|g" "$CONF"
-
-sudo nginx -t && sudo systemctl reload nginx
-echo "nginx reloaded"
-REMOTE
-
-# ---------------------------------------------------------------------------
-# Ensure UFW allows the requested ports.  The AMI may have been baked with
-# different ports; add rules for any ports not already open.
-# TODO: remove this hack once novnc-configure-userdata is implemented
-#       (see https://github.com/markcallen/novnc-desktop/issues/33).
-# ---------------------------------------------------------------------------
-echo ""
-echo "[$LABEL] Ensuring UFW allows HTTP=$HTTP_PORT HTTPS=$HTTPS_PORT..."
-ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" bash -s -- "$HTTP_PORT" "$HTTPS_PORT" << 'REMOTE'
-HTTP_PORT="$1"
-HTTPS_PORT="$2"
-
-for PORT in "$HTTP_PORT" "$HTTPS_PORT"; do
-  if sudo ufw status | grep -qE "^${PORT}/tcp\s+ALLOW"; then
-    echo "UFW already allows $PORT/tcp"
-  else
-    sudo ufw allow "${PORT}/tcp"
-    echo "UFW opened $PORT/tcp"
-  fi
-done
-REMOTE
 
 # ---------------------------------------------------------------------------
 # Fetch a time-limited desktop access URL and write it into state
 # ---------------------------------------------------------------------------
 echo ""
 echo "[$LABEL] Fetching desktop access URL..."
-DESKTOP_URL_OUTPUT=$(
-  ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" novnc-desktop-url
-)
-ACCESS_URL=$(echo "$DESKTOP_URL_OUTPUT" | awk '/Desktop URL/{print $NF}')
+DESKTOP_URL_OUTPUT=$(ssh "${SSH_OPTS[@]}" "$VNC_USER@$PUBLIC_IP" novnc-desktop-url 2>&1 || true)
+ACCESS_URL=$(echo "$DESKTOP_URL_OUTPUT" | awk '/Desktop URL/{print $NF}' || true)
 
 if [[ -z "$ACCESS_URL" ]]; then
-  echo "[$LABEL] ERROR: Could not parse access URL from novnc-desktop-url output:" >&2
+  echo "[$LABEL] WARNING: Could not parse access URL from novnc-desktop-url output:" >&2
   echo "$DESKTOP_URL_OUTPUT" >&2
-  exit 1
 fi
 
 cat > "$STATE_FILE" <<EOF
@@ -326,16 +312,36 @@ cat > "$STATE_FILE" <<EOF
   "variant": "$VARIANT",
   "novncHttpPort": $HTTP_PORT,
   "novncHttpsPort": $HTTPS_PORT,
+  "tlsDomain": "$TLS_HOSTNAME",
+  "certbotEmail": "$NOVNC_CERTBOT_EMAIL",
+  "verificationPassed": $AMI_VERIFY_PASS,
+  "verificationFailureReason": "${VERIFY_FAILURE_REASON}",
   "accessUrl": "$ACCESS_URL"
 }
 EOF
 
 echo "[$LABEL] State updated with accessUrl."
 echo ""
-echo "Desktop: $ACCESS_URL"
+if [[ -n "$ACCESS_URL" ]]; then
+  echo "Desktop: $ACCESS_URL"
+else
+  echo "Desktop URL unavailable; connect via SSH:"
+  echo "  ssh -i $SSH_KEY_PATH $VNC_USER@$PUBLIC_IP"
+fi
 echo ""
 echo "Next: run the smoke tests:"
 echo "  pnpm test"
 echo ""
 echo "When done, clean up with:"
 echo "  pnpm infra:down"
+
+if [[ "$AMI_VERIFY_PASS" == "false" ]]; then
+  echo ""
+  echo "[$LABEL] ERROR: AMI runtime verification failed on this instance." >&2
+  echo "[$LABEL] Inspect service failures before deciding to rebuild the AMI:" >&2
+  echo "  ssh -i $SSH_KEY_PATH $VNC_USER@$PUBLIC_IP" >&2
+  echo "  sudo systemctl --failed" >&2
+  echo "  sudo journalctl -u novnc-configure-userdata -n 200 --no-pager" >&2
+  echo "  sudo journalctl -u novnc-auth -n 200 --no-pager" >&2
+  exit 1
+fi

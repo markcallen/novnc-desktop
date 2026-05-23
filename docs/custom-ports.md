@@ -21,6 +21,12 @@ port the AMI was built with.
 
 See [route53-iam-setup.md](./route53-iam-setup.md) for the full IAM setup.
 
+Quick setup command:
+
+```bash
+bash smoke/scripts/setup-certbot-route53.sh --zone smoke.markcallen.dev
+```
+
 ---
 
 ## Scenario A — Self-signed certificate on 8080 / 8443
@@ -93,14 +99,30 @@ Accept the self-signed certificate warning in your browser.
 
 DNS-01 means no port-80 requirement — certbot works on any port combination.
 
+If you use the Terraform AMI helper script, pass the domain/email directly:
+
+```bash
+bash smoke/scripts/infra-ami.sh \
+  --variant elementary \
+  --public \
+  --http-port 8080 \
+  --https-port 8443 \
+  --domain smoke.markcallen.dev \
+  --certbot-email mark@markcallen.dev
+```
+
+`--domain` is the parent hosted zone. The script creates a unique hostname
+like `desired-sawfly.smoke.markcallen.dev`, creates the Route53 `A` record,
+and uses that hostname for certbot.
+
 ### Prerequisites
 
 1. Complete the [Route53 IAM setup](./route53-iam-setup.md) to create the
    `novnc-desktop-certbot` instance profile.
-2. Create a DNS `A` record for your domain pointing to the instance's public IP
-   before `novnc-setup-tls` runs. Use an Elastic IP (see
-   [launch-from-ami.md](./launch-from-ami.md#using-an-elastic-ip-recommended-for-production))
-   to know the IP before launch.
+2. For `infra-ami.sh`, no manual `A` record is needed — Terraform creates it.
+   If you launch manually with `aws ec2 run-instances`, create DNS yourself
+   first (or use an Elastic IP), as documented in
+   [launch-from-ami.md](./launch-from-ami.md#using-an-elastic-ip-recommended-for-production).
 
 ### 1. Build the AMI
 

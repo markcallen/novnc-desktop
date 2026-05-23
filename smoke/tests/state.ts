@@ -10,6 +10,7 @@ import { buildBaseUrl, parseTcpPort } from './helpers';
 export interface SmokeState {
   publicIp: string;
   publicDns: string;
+  tlsDomain?: string;
   accessUrl: string;
   desktopType?: string;
   novncHttpPort: number;
@@ -56,6 +57,7 @@ const novncHttpsPort = parseTcpPort(
 export const state: SmokeState = {
   publicIp: parsed.publicIp,
   publicDns: parsed.publicDns ?? parsed.publicIp,
+  tlsDomain: parsed.tlsDomain,
   accessUrl: parsed.accessUrl,
   desktopType: parsed.desktopType,
   novncHttpPort,

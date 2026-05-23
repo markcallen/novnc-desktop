@@ -81,6 +81,20 @@ locals {
   resource_name       = "${var.name_prefix}-${local.stack_name}"
   http_ingress_ports  = distinct([80, var.novnc_http_port])
   https_ingress_ports = distinct([443, var.novnc_https_port])
+  novnc_hostname_trim = trimspace(var.novnc_hostname)
+  tls_zone_normalized = trimsuffix(trimspace(var.tls_zone), ".")
+  tls_enabled            = local.tls_zone_normalized != ""
+  generated_tls_hostname = local.tls_enabled ? "${random_pet.tls_host[0].id}.${local.tls_zone_normalized}" : ""
+  effective_novnc_hostname = local.generated_tls_hostname != "" ? local.generated_tls_hostname : (
+    local.novnc_hostname_trim != "" ? local.novnc_hostname_trim : null
+  )
+  user_data_json = jsonencode({
+    novnc_http_port   = var.novnc_http_port
+    novnc_https_port  = var.novnc_https_port
+    novnc_hostname    = local.effective_novnc_hostname
+    novnc_use_certbot = var.novnc_use_certbot
+    novnc_certbot_email = trimspace(var.novnc_certbot_email) != "" ? var.novnc_certbot_email : null
+  })
   selected_subnet_id = try([
     for subnet in values(data.aws_subnet.default) : subnet.id
     if(
@@ -148,6 +162,7 @@ resource "aws_instance" "smoke" {
   subnet_id                   = local.selected_subnet_id
   vpc_security_group_ids      = [aws_security_group.smoke.id]
   key_name                    = aws_key_pair.smoke.key_name
+  iam_instance_profile        = trimspace(var.iam_instance_profile) != "" ? var.iam_instance_profile : null
   associate_public_ip_address = true
 
   root_block_device {
@@ -161,6 +176,8 @@ resource "aws_instance" "smoke" {
     http_endpoint = "enabled"
     http_tokens   = "required"
   }
+
+  user_data = local.user_data_json
 
   tags = {
     Name    = local.resource_name
@@ -179,23 +196,24 @@ resource "aws_instance" "smoke" {
 # ---------------------------------------------------------------------------
 # Optional TLS: random subdomain + Route53 A record
 # Created only when var.tls_zone is non-empty (e.g. "smoke.markcallen.dev").
-# The random hex prefix ensures no hostname conflicts across concurrent runs.
+# The random_pet prefix ensures no hostname conflicts across concurrent runs.
 # terraform destroy removes both the A record and the random resource.
 # ---------------------------------------------------------------------------
-resource "random_id" "tls_host" {
-  count       = var.tls_zone != "" ? 1 : 0
-  byte_length = 4
+resource "random_pet" "tls_host" {
+  count     = local.tls_enabled ? 1 : 0
+  length    = 2
+  separator = "-"
 }
 
 data "aws_route53_zone" "tls" {
-  count = var.tls_zone != "" ? 1 : 0
-  name  = var.tls_zone
+  count = local.tls_enabled ? 1 : 0
+  name  = local.tls_zone_normalized
 }
 
 resource "aws_route53_record" "tls" {
-  count   = var.tls_zone != "" ? 1 : 0
+  count   = local.tls_enabled ? 1 : 0
   zone_id = data.aws_route53_zone.tls[0].zone_id
-  name    = "${random_id.tls_host[0].hex}.${var.tls_zone}"
+  name    = "${random_pet.tls_host[0].id}.${local.tls_zone_normalized}"
   type    = "A"
   ttl     = 60
   records = [aws_instance.smoke.public_ip]
