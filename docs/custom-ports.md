@@ -103,21 +103,26 @@ If you use the Terraform AMI helper script, pass the domain/email directly:
 
 ```bash
 bash smoke/scripts/infra-ami.sh \
+  --variant elementary \
   --public \
   --http-port 8080 \
   --https-port 8443 \
-  --domain myapp.example.com \
-  --certbot-email admin@example.com
+  --domain smoke.markcallen.dev \
+  --certbot-email mark@markcallen.dev
 ```
+
+`--domain` is the parent hosted zone. The script creates a unique hostname
+like `desired-sawfly.smoke.markcallen.dev`, creates the Route53 `A` record,
+and uses that hostname for certbot.
 
 ### Prerequisites
 
 1. Complete the [Route53 IAM setup](./route53-iam-setup.md) to create the
    `novnc-desktop-certbot` instance profile.
-2. Create a DNS `A` record for your domain pointing to the instance's public IP
-   before `novnc-setup-tls` runs. Use an Elastic IP (see
-   [launch-from-ami.md](./launch-from-ami.md#using-an-elastic-ip-recommended-for-production))
-   to know the IP before launch.
+2. For `infra-ami.sh`, no manual `A` record is needed — Terraform creates it.
+   If you launch manually with `aws ec2 run-instances`, create DNS yourself
+   first (or use an Elastic IP), as documented in
+   [launch-from-ami.md](./launch-from-ami.md#using-an-elastic-ip-recommended-for-production).
 
 ### 1. Build the AMI
 
