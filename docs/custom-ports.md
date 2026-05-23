@@ -21,6 +21,12 @@ port the AMI was built with.
 
 See [route53-iam-setup.md](./route53-iam-setup.md) for the full IAM setup.
 
+Quick setup command:
+
+```bash
+bash smoke/scripts/setup-certbot-route53.sh --zone smoke.markcallen.dev
+```
+
 ---
 
 ## Scenario A — Self-signed certificate on 8080 / 8443
@@ -92,6 +98,17 @@ Accept the self-signed certificate warning in your browser.
 ## Scenario B — Let's Encrypt certificate on 8080 / 8443
 
 DNS-01 means no port-80 requirement — certbot works on any port combination.
+
+If you use the Terraform AMI helper script, pass the domain/email directly:
+
+```bash
+bash smoke/scripts/infra-ami.sh \
+  --public \
+  --http-port 8080 \
+  --https-port 8443 \
+  --domain myapp.example.com \
+  --certbot-email admin@example.com
+```
 
 ### Prerequisites
 

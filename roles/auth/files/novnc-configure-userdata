@@ -6,6 +6,7 @@
 #   - novnc_https_port
 #   - novnc_hostname
 #   - novnc_use_certbot
+#   - novnc_certbot_email
 #
 # Runs once via systemd. Safe no-op when user-data is empty/non-JSON or has no
 # supported keys.
@@ -78,6 +79,7 @@ http_port = data.get("novnc_http_port")
 https_port = data.get("novnc_https_port")
 hostname = data.get("novnc_hostname")
 use_certbot = data.get("novnc_use_certbot")
+certbot_email = data.get("novnc_certbot_email")
 
 emit("parse_error", 0)
 emit("novnc_http_port", http_port)
@@ -88,6 +90,7 @@ if isinstance(use_certbot, bool):
     emit("novnc_use_certbot", "true" if use_certbot else "false")
 else:
     emit("novnc_use_certbot", "")
+emit("novnc_certbot_email", certbot_email)
 PYEOF
 )
 
@@ -96,6 +99,7 @@ novnc_http_port=""
 novnc_https_port=""
 novnc_hostname=""
 novnc_use_certbot=""
+novnc_certbot_email=""
 
 while IFS='=' read -r key value; do
   case "$key" in
@@ -104,6 +108,7 @@ while IFS='=' read -r key value; do
     novnc_https_port) novnc_https_port="$value" ;;
     novnc_hostname) novnc_hostname="$value" ;;
     novnc_use_certbot) novnc_use_certbot="$value" ;;
+    novnc_certbot_email) novnc_certbot_email="$value" ;;
   esac
 done <<< "$PARSED"
 
@@ -113,7 +118,7 @@ if [[ "$parse_error" == "1" ]]; then
   exit 0
 fi
 
-if [[ -z "$novnc_http_port" && -z "$novnc_https_port" && -z "$novnc_hostname" && -z "$novnc_use_certbot" ]]; then
+if [[ -z "$novnc_http_port" && -z "$novnc_https_port" && -z "$novnc_hostname" && -z "$novnc_use_certbot" && -z "$novnc_certbot_email" ]]; then
   log "No novnc_* keys found in user-data; nothing to apply."
   touch "$SENTINEL"
   exit 0
@@ -272,7 +277,11 @@ fi
 
 if [[ "$novnc_use_certbot" == "true" ]]; then
   if [[ -n "$novnc_hostname" ]]; then
-    CERTBOT_DOMAIN="$novnc_hostname" NOVNC_HTTPS_PORT="$TARGET_HTTPS_PORT" /usr/local/bin/novnc-setup-tls
+    if [[ -n "$novnc_certbot_email" ]]; then
+      CERTBOT_DOMAIN="$novnc_hostname" CERTBOT_EMAIL="$novnc_certbot_email" NOVNC_HTTPS_PORT="$TARGET_HTTPS_PORT" /usr/local/bin/novnc-setup-tls
+    else
+      CERTBOT_DOMAIN="$novnc_hostname" NOVNC_HTTPS_PORT="$TARGET_HTTPS_PORT" /usr/local/bin/novnc-setup-tls
+    fi
     log "Triggered novnc-setup-tls for ${novnc_hostname}."
   else
     log "novnc_use_certbot=true but novnc_hostname is empty; skipping certbot setup."

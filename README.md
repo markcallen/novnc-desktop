@@ -113,6 +113,22 @@ pnpm infra:up
 
 Creates the EC2 instance, generates a dedicated SSH key pair, runs the Ansible playbook, and saves connection details to `.smoke-state/state.json`.
 
+To launch directly from an existing noVNC AMI (instead of provisioning Ubuntu from scratch), use:
+
+```sh
+bash smoke/scripts/infra-ami.sh --public --domain myapp.example.com --certbot-email admin@example.com
+```
+
+Useful `infra-ami.sh` flags:
+
+| Flag                      | Description                                                                  |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `--domain <fqdn>`         | Sets `novnc_hostname` in first-boot user-data and enables certbot by default |
+| `--certbot-email <email>` | Passes certbot registration/renewal email to `novnc-setup-tls`               |
+| `--use-certbot`           | Force-enable certbot on first boot (requires `--domain`)                     |
+| `--no-certbot`            | Force-disable certbot on first boot even when `--domain` is set              |
+| `--public`                | Resolve AMI from production-tagged images                                    |
+
 For the configurable-port Elementary smoke path, provision with:
 
 ```sh

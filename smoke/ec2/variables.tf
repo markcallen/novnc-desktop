@@ -83,8 +83,20 @@ variable "novnc_use_certbot" {
   default     = false
 }
 
+variable "novnc_certbot_email" {
+  description = "Optional certbot email passed via EC2 user-data for first-boot TLS setup."
+  type        = string
+  default     = ""
+}
+
 variable "ami_id" {
   description = "Optional AMI ID to launch from. If not provided, uses the latest Ubuntu 24.04 AMI."
+  type        = string
+  default     = ""
+}
+
+variable "iam_instance_profile" {
+  description = "Optional IAM instance profile name to attach to the EC2 instance."
   type        = string
   default     = ""
 }
