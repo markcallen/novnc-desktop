@@ -40,6 +40,18 @@ variable "ami_environment" {
   default     = "test"
 }
 
+variable "git_sha" {
+  type        = string
+  description = "Commit SHA associated with this AMI build."
+  default     = "unknown"
+}
+
+variable "app_version" {
+  type        = string
+  description = "Application version associated with this AMI build."
+  default     = "unknown"
+}
+
 variable "novnc_http_port" {
   type        = number
   description = "HTTP port nginx listens on. Must be 80 for Let's Encrypt HTTP-01 certificate validation. Use a non-standard port (e.g. 8080) only when certbot is not needed."
@@ -93,7 +105,9 @@ source "amazon-ebs" "openbox" {
     BuildTool   = "Packer"
     BuildDate   = local.timestamp
     Environment = var.ami_environment
+    GitSha      = var.git_sha
     Project     = "novnc-desktop"
+    Version     = var.app_version
     Variant     = "openbox"
   }
 
@@ -104,7 +118,9 @@ source "amazon-ebs" "openbox" {
     BuildDate   = local.timestamp
     Description = "noVNC Desktop (Openbox) over HTTPS with Ubuntu 24.04 LTS"
     Environment = var.ami_environment
+    GitSha      = var.git_sha
     Project     = "novnc-desktop"
+    Version     = var.app_version
     Variant     = "openbox"
   }
 
@@ -136,7 +152,9 @@ source "amazon-ebs" "elementary" {
     BuildTool   = "Packer"
     BuildDate   = local.timestamp
     Environment = var.ami_environment
+    GitSha      = var.git_sha
     Project     = "novnc-desktop"
+    Version     = var.app_version
     Variant     = "elementary"
   }
 
@@ -147,7 +165,9 @@ source "amazon-ebs" "elementary" {
     BuildDate   = local.timestamp
     Description = "noVNC Desktop (Elementary) over HTTPS with Ubuntu 24.04 LTS"
     Environment = var.ami_environment
+    GitSha      = var.git_sha
     Project     = "novnc-desktop"
+    Version     = var.app_version
     Variant     = "elementary"
   }
 
