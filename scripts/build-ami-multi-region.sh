@@ -90,7 +90,7 @@ count_matching_public_amis() {
     --owners self \
     --filters \
       "Name=tag:Project,Values=novnc-desktop" \
-      "Name=tag:Environment,Values=production" \
+      "Name=tag:Environment,Values=$AMI_ENVIRONMENT_VALUE" \
       "Name=state,Values=available" \
       "Name=name,Values=${AMI_NAME_PREFIX}-*" \
     --query 'length(Images[?Public==`true`])' \
@@ -123,7 +123,6 @@ done
 AMI_REGIONS_HCL="[$(IFS=,; echo "${TARGET_REGIONS[*]}")]"
 
 INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
-AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-novnc-desktop-ubuntu-24.04}"
 USE_CERTBOT="${USE_CERTBOT:-false}"
 NOVNC_HTTP_PORT="${NOVNC_HTTP_PORT:-80}"
 NOVNC_HTTPS_PORT="${NOVNC_HTTPS_PORT:-443}"
@@ -148,7 +147,7 @@ PACKER_CMD=(
 
 echo ""
 echo "Primary build region: $PRIMARY_REGION"
-echo "Copy target regions:  ${REGIONS[*]}"
+echo "Copy target regions:  ${TARGET_REGIONS[*]//\"/}"
 echo "Mode:                 $MODE"
 echo "Public:               $AMI_PUBLIC_VALUE"
 echo "Environment:          $AMI_ENVIRONMENT_VALUE"
