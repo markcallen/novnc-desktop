@@ -6,8 +6,8 @@
   "packageManager": "pnpm@10.33.2",
   "description": "Playwright smoke test suite for novnc-desktop",
   "scripts": {
-    "build:ami": "./build-ami.sh",
-    "build:ami:public": "AMI_PUBLIC=true AMI_ENVIRONMENT=production ./build-ami.sh",
+    "build:ami": "./scripts/build-ami.sh",
+    "build:ami:public": "AMI_PUBLIC=true AMI_ENVIRONMENT=production ./scripts/build-ami.sh",
     "infra:up": "bash smoke/scripts/infra-up.sh",
     "infra:up:tls": "bash smoke/scripts/infra-up-tls.sh",
     "infra:ami": "bash smoke/scripts/infra-ami.sh",

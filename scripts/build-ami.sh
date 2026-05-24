@@ -28,22 +28,22 @@ set -e
 #
 # Examples:
 #   # Build private AMIs (no certbot, not public):
-#   ./build-ami.sh
+#   ./scripts/build-ami.sh
 #
 #   # Preview the commands without executing:
-#   ./build-ami.sh --dry-run
+#   ./scripts/build-ami.sh --dry-run
 #
 #   # Build public AMIs for distribution:
-#   AMI_PUBLIC=true ./build-ami.sh
+#   AMI_PUBLIC=true ./scripts/build-ami.sh
 #
 #   # Build AMIs on port 8443 (certbot-compatible — HTTP still on port 80):
-#   NOVNC_HTTPS_PORT=8443 AMI_PUBLIC=true ./build-ami.sh
+#   NOVNC_HTTPS_PORT=8443 AMI_PUBLIC=true ./scripts/build-ami.sh
 #
 #   # Build AMIs on 8080/8443 (self-signed only — certbot requires port 80):
-#   NOVNC_HTTP_PORT=8080 NOVNC_HTTPS_PORT=8443 AMI_PUBLIC=true ./build-ami.sh
+#   NOVNC_HTTP_PORT=8080 NOVNC_HTTPS_PORT=8443 AMI_PUBLIC=true ./scripts/build-ami.sh
 #
 #   # Build with custom prefix:
-#   AMI_NAME_PREFIX=my-novnc AMI_PUBLIC=true ./build-ami.sh
+#   AMI_NAME_PREFIX=my-novnc AMI_PUBLIC=true ./scripts/build-ami.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -52,7 +52,7 @@ DRY_RUN=false
 
 usage() {
     cat <<'EOF'
-Usage: ./build-ami.sh [--dry-run|-n] [--help|-h]
+Usage: ./scripts/build-ami.sh [--dry-run|-n] [--help|-h]
 
 Options:
   --dry-run, -n   Print planned actions and packer commands without executing.

@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# Build noVNC AMIs across a fixed region set, with a public-AMI cap check.
+#
+# Regions: us-east-1, us-east-2, us-west-2
+#
+# Modes:
+#   --public  Build public AMIs, but fail when a region has >=4 matching public AMIs.
+#   --private Build private AMIs in each region (no public-cap skip).
+#
+# Optional env vars:
+#   AMI_NAME_PREFIX   (default: novnc-desktop-ubuntu-24.04)
+#   PUBLIC_LIMIT      (default: 4)
+#   AMI_ENVIRONMENT   (default: production for --public, test for --private)
+#   and any vars consumed by ./scripts/build-ami.sh (INSTANCE_TYPE, NOVNC_HTTP_PORT, NOVNC_HTTPS_PORT, etc.)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BUILD_SCRIPT="$REPO_ROOT/scripts/build-ami.sh"
+
+REGIONS=("us-east-1" "us-east-2" "us-west-2")
+AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-novnc-desktop-ubuntu-24.04}"
+PUBLIC_LIMIT="${PUBLIC_LIMIT:-4}"
+MODE="public"
+DRY_RUN="false"
+
+usage() {
+  cat <<'USAGE'
+Usage: bash smoke/scripts/build-ami-multi-region.sh [--public|--private] [--dry-run]
+
+Options:
+  --public    Build public AMIs (default). Fails if any region has >= PUBLIC_LIMIT existing matching public AMIs.
+  --private   Build private AMIs in all regions.
+  --dry-run   Print what would run without building.
+  --help      Show this help.
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --public)
+      MODE="public"
+      shift
+      ;;
+    --private)
+      MODE="private"
+      shift
+      ;;
+    --dry-run|-n)
+      DRY_RUN="true"
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ ! -x "$BUILD_SCRIPT" ]]; then
+  echo "ERROR: build script not found or not executable: $BUILD_SCRIPT" >&2
+  exit 1
+fi
+
+if ! [[ "$PUBLIC_LIMIT" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: PUBLIC_LIMIT must be a non-negative integer (got: $PUBLIC_LIMIT)" >&2
+  exit 1
+fi
+
+if [[ "$MODE" == "public" ]]; then
+  AMI_PUBLIC_VALUE="true"
+  AMI_ENVIRONMENT_VALUE="${AMI_ENVIRONMENT:-production}"
+else
+  AMI_PUBLIC_VALUE="false"
+  AMI_ENVIRONMENT_VALUE="${AMI_ENVIRONMENT:-test}"
+fi
+
+count_matching_public_amis() {
+  local region="$1"
+
+  aws ec2 describe-images \
+    --region "$region" \
+    --owners self \
+    --filters \
+      "Name=tag:Project,Values=novnc-desktop" \
+      "Name=tag:Environment,Values=production" \
+      "Name=state,Values=available" \
+      "Name=name,Values=${AMI_NAME_PREFIX}-*" \
+    --query 'length(Images[?Public==`true`])' \
+    --output text
+}
+
+for region in "${REGIONS[@]}"; do
+  echo ""
+  echo "=== Region: $region ==="
+
+  if [[ "$MODE" == "public" ]]; then
+    public_count="$(count_matching_public_amis "$region")"
+    echo "Public AMIs matching prefix '${AMI_NAME_PREFIX}-*': $public_count"
+
+    if (( public_count >= PUBLIC_LIMIT )); then
+      echo "ERROR: $region already has ${public_count} matching public AMIs (limit=${PUBLIC_LIMIT})." >&2
+      echo "Run the AMI cleanup script, then retry this command." >&2
+      exit 1
+    fi
+  fi
+
+  cmd=("$BUILD_SCRIPT")
+  if [[ "$DRY_RUN" == "true" ]]; then
+    cmd+=("--dry-run")
+  fi
+
+  echo "Building in $region (mode=$MODE, AMI_PUBLIC=$AMI_PUBLIC_VALUE, AMI_ENVIRONMENT=$AMI_ENVIRONMENT_VALUE)..."
+  AWS_REGION="$region" \
+  AMI_PUBLIC="$AMI_PUBLIC_VALUE" \
+  AMI_ENVIRONMENT="$AMI_ENVIRONMENT_VALUE" \
+  "${cmd[@]}"
+done
+
+echo ""
+echo "Done."
