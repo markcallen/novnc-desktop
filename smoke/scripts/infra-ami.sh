@@ -168,9 +168,9 @@ if [[ -z "$AMI_ID" ]]; then
   if [[ -z "$AMI_ID" || "$AMI_ID" == "None" ]]; then
     echo "ERROR: No $VARIANT AMI found with Environment=$ENVIRONMENT, Project=novnc-desktop" >&2
     if [[ "$ENVIRONMENT" == "production" ]]; then
-      echo "Build one with: NOVNC_HTTP_PORT=$HTTP_PORT NOVNC_HTTPS_PORT=$HTTPS_PORT AMI_PUBLIC=true AMI_ENVIRONMENT=production ./build-ami.sh" >&2
+      echo "Build one with: NOVNC_HTTP_PORT=$HTTP_PORT NOVNC_HTTPS_PORT=$HTTPS_PORT AMI_PUBLIC=true AMI_ENVIRONMENT=production ./scripts/build-ami.sh" >&2
     else
-      echo "Build one with: ./build-ami.sh" >&2
+      echo "Build one with: ./scripts/build-ami.sh" >&2
     fi
     exit 1
   fi

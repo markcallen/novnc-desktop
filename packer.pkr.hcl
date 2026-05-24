@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "ami_regions" {
+  type        = list(string)
+  description = "Additional AWS regions to copy the resulting AMIs to."
+  default     = []
+}
+
 variable "instance_type" {
   type        = string
   description = "EC2 instance type to use for the build"
@@ -86,6 +92,7 @@ source "amazon-ebs" "openbox" {
   ami_description = "noVNC Desktop (Openbox) over HTTPS with Ubuntu 24.04 LTS"
   instance_type   = var.instance_type
   region          = var.aws_region
+  ami_regions     = var.ami_regions
   source_ami      = data.amazon-ami.ubuntu.id
 
   associate_public_ip_address = true
@@ -133,6 +140,7 @@ source "amazon-ebs" "elementary" {
   ami_description = "noVNC Desktop (Elementary) over HTTPS with Ubuntu 24.04 LTS"
   instance_type   = var.instance_type
   region          = var.aws_region
+  ami_regions     = var.ami_regions
   source_ami      = data.amazon-ami.ubuntu.id
 
   associate_public_ip_address = true

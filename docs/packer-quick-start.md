@@ -48,7 +48,7 @@ aws configure
 
 ```bash
 cd /path/to/novnc-desktop
-./build-ami.sh
+./scripts/build-ami.sh
 ```
 
 This builds an AMI named `novnc-desktop-ubuntu-24.04-<timestamp>` in `us-east-1` using a `t3.medium` instance.
@@ -56,7 +56,7 @@ This builds an AMI named `novnc-desktop-ubuntu-24.04-<timestamp>` in `us-east-1`
 ### Custom Build
 
 ```bash
-AWS_REGION=us-west-2 INSTANCE_TYPE=t3.large ./build-ami.sh
+AWS_REGION=us-west-2 INSTANCE_TYPE=t3.large ./scripts/build-ami.sh
 ```
 
 ### Manual Packer Build
@@ -143,7 +143,7 @@ sudo systemctl status nginx
 ```
 novnc-desktop/
 ├── packer.pkr.hcl           # Packer configuration
-├── build-ami.sh             # Build script
+├── scripts/build-ami.sh             # Build script
 └── docs/
     ├── packer-build.md      # Detailed documentation
     └── packer-quick-start.md # This file
@@ -199,7 +199,7 @@ Use `AWS_REGION` to select cheaper regions (us-east-1 is generally cheapest).
 
 ## Next Steps
 
-1. **Build the AMI**: `./build-ami.sh`
+1. **Build the AMI**: `./scripts/build-ami.sh`
 2. **Launch an instance**: From the AWS console or CLI
 3. **Test the environment**: Access via SSH and verify services
 4. **Use in production**: Tag, document, and share the AMI

@@ -38,7 +38,7 @@ No domain, DNS, or IAM role required.
 ```bash
 NOVNC_HTTP_PORT=8080 NOVNC_HTTPS_PORT=8443 \
   AMI_PUBLIC=true AMI_ENVIRONMENT=production \
-  ./build-ami.sh
+  ./scripts/build-ami.sh
 ```
 
 Builds both **openbox** and **elementary** variants.
@@ -129,7 +129,7 @@ and uses that hostname for certbot.
 ```bash
 NOVNC_HTTP_PORT=8080 NOVNC_HTTPS_PORT=8443 \
   AMI_PUBLIC=true AMI_ENVIRONMENT=production \
-  ./build-ami.sh
+  ./scripts/build-ami.sh
 ```
 
 ### 2. Create a security group
@@ -239,12 +239,12 @@ aws ec2 describe-images \
 
 ## Variable reference
 
-| `build-ami.sh` env var | Default | Notes                               |
-| ---------------------- | ------- | ----------------------------------- |
-| `NOVNC_HTTP_PORT`      | `80`    | HTTP redirect port baked into nginx |
-| `NOVNC_HTTPS_PORT`     | `443`   | HTTPS desktop port baked into nginx |
-| `AMI_PUBLIC`           | `false` | Set `true` for public AMIs          |
-| `AMI_ENVIRONMENT`      | `test`  | Use `production` for releases       |
+| `scripts/build-ami.sh` env var | Default | Notes                               |
+| ------------------------------ | ------- | ----------------------------------- |
+| `NOVNC_HTTP_PORT`              | `80`    | HTTP redirect port baked into nginx |
+| `NOVNC_HTTPS_PORT`             | `443`   | HTTPS desktop port baked into nginx |
+| `AMI_PUBLIC`                   | `false` | Set `true` for public AMIs          |
+| `AMI_ENVIRONMENT`              | `test`  | Use `production` for releases       |
 
 ## Troubleshooting
 

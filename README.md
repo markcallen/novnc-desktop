@@ -296,13 +296,13 @@ To build both variants yourself:
 
 ```sh
 # Build private AMIs (default)
-./build-ami.sh
+./scripts/build-ami.sh
 
 # Build public AMIs for distribution
-AMI_PUBLIC=true ./build-ami.sh
+AMI_PUBLIC=true ./scripts/build-ami.sh
 
 # Custom prefix and region
-AMI_NAME_PREFIX=my-novnc AWS_REGION=us-west-2 AMI_PUBLIC=true ./build-ami.sh
+AMI_NAME_PREFIX=my-novnc AWS_REGION=us-west-2 AMI_PUBLIC=true ./scripts/build-ami.sh
 ```
 
 | Variable          | Default                      | Description                                                         |

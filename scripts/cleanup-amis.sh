@@ -2,7 +2,7 @@
 # cleanup-amis.sh — deregister AMIs and delete snapshots created by this project
 #
 # Usage:
-#   ./cleanup-amis.sh [OPTIONS]
+#   ./scripts/cleanup-amis.sh [OPTIONS]
 #
 # Options:
 #   --region <region>          AWS region (default: us-east-1)
@@ -15,19 +15,19 @@
 #
 # Examples:
 #   # Preview what would be cleaned up (test AMIs only):
-#   ./cleanup-amis.sh --dry-run
+#   ./scripts/cleanup-amis.sh --dry-run
 #
 #   # Delete all test AMIs without confirmation:
-#   ./cleanup-amis.sh --yes
+#   ./scripts/cleanup-amis.sh --yes
 #
 #   # Delete all production AMIs, keeping the 2 most recent per variant:
-#   ./cleanup-amis.sh --environment production --keep 2
+#   ./scripts/cleanup-amis.sh --environment production --keep 2
 #
 #   # Delete only openbox AMIs in us-west-2:
-#   ./cleanup-amis.sh --region us-west-2 --variant openbox
+#   ./scripts/cleanup-amis.sh --region us-west-2 --variant openbox
 #
 #   # Delete everything (test + production):
-#   ./cleanup-amis.sh --environment all --yes
+#   ./scripts/cleanup-amis.sh --environment all --yes
 
 set -euo pipefail
 

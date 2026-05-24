@@ -39,7 +39,7 @@ This guide explains how to build an AWS AMI for the noVNC Desktop using Packer.
 Build an AMI with default settings (us-east-1, t3.medium instance type):
 
 ```bash
-./build-ami.sh
+./scripts/build-ami.sh
 ```
 
 ### Custom Build
@@ -47,7 +47,7 @@ Build an AMI with default settings (us-east-1, t3.medium instance type):
 Build with custom AWS region and instance type:
 
 ```bash
-AWS_REGION=us-west-2 INSTANCE_TYPE=t3.large ./build-ami.sh
+AWS_REGION=us-west-2 INSTANCE_TYPE=t3.large ./scripts/build-ami.sh
 ```
 
 Or manually with Packer:
@@ -151,7 +151,7 @@ If Packer times out waiting for SSH:
 
 ### Build Takes Too Long
 
-- Use a larger instance type: `INSTANCE_TYPE=t3.large ./build-ami.sh`
+- Use a larger instance type: `INSTANCE_TYPE=t3.large ./scripts/build-ami.sh`
 - Increase the EBS volume type to `gp3` (already configured)
 - Check your internet connection (Ubuntu packages are being downloaded)
 
@@ -226,7 +226,7 @@ jobs:
         run: packer validate packer.pkr.hcl
 
       - name: Build AMI
-        run: ./build-ami.sh
+        run: ./scripts/build-ami.sh
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
