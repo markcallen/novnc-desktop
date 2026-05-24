@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
-# Build noVNC AMIs across a fixed region set, with a public-AMI cap check.
+# Build noVNC AMIs across a fixed region set, using one primary-region build
+# with AMI copies to the additional regions.
 #
 # Regions: us-east-1, us-east-2, us-west-2
 #
 # Modes:
 #   --public  Build public AMIs, but fail when a region has >=4 matching public AMIs.
-#   --private Build private AMIs in each region (no public-cap skip).
+#   --private Build private AMIs in all regions (single build + copy).
 #
 # Optional env vars:
 #   AMI_NAME_PREFIX   (default: novnc-desktop-ubuntu-24.04)
 #   PUBLIC_LIMIT      (default: 4)
 #   AMI_ENVIRONMENT   (default: production for --public, test for --private)
-#   and any vars consumed by ./scripts/build-ami.sh (INSTANCE_TYPE, NOVNC_HTTP_PORT, NOVNC_HTTPS_PORT, etc.)
+#   and any vars consumed by packer.pkr.hcl (INSTANCE_TYPE, NOVNC_HTTP_PORT, NOVNC_HTTPS_PORT, etc.)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BUILD_SCRIPT="$REPO_ROOT/scripts/build-ami.sh"
-
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PACKER_TEMPLATE="$REPO_ROOT/packer.pkr.hcl"
+PRIMARY_REGION="us-east-1"
 REGIONS=("us-east-1" "us-east-2" "us-west-2")
 AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-novnc-desktop-ubuntu-24.04}"
 PUBLIC_LIMIT="${PUBLIC_LIMIT:-4}"
@@ -27,7 +28,7 @@ DRY_RUN="false"
 
 usage() {
   cat <<'USAGE'
-Usage: bash smoke/scripts/build-ami-multi-region.sh [--public|--private] [--dry-run]
+Usage: bash scripts/build-ami-multi-region.sh [--public|--private] [--dry-run]
 
 Options:
   --public    Build public AMIs (default). Fails if any region has >= PUBLIC_LIMIT existing matching public AMIs.
@@ -63,8 +64,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ ! -x "$BUILD_SCRIPT" ]]; then
-  echo "ERROR: build script not found or not executable: $BUILD_SCRIPT" >&2
+if [[ ! -f "$PACKER_TEMPLATE" ]]; then
+  echo "ERROR: packer template not found: $PACKER_TEMPLATE" >&2
   exit 1
 fi
 
@@ -111,17 +112,54 @@ for region in "${REGIONS[@]}"; do
     fi
   fi
 
-  cmd=("$BUILD_SCRIPT")
-  if [[ "$DRY_RUN" == "true" ]]; then
-    cmd+=("--dry-run")
-  fi
-
-  echo "Building in $region (mode=$MODE, AMI_PUBLIC=$AMI_PUBLIC_VALUE, AMI_ENVIRONMENT=$AMI_ENVIRONMENT_VALUE)..."
-  AWS_REGION="$region" \
-  AMI_PUBLIC="$AMI_PUBLIC_VALUE" \
-  AMI_ENVIRONMENT="$AMI_ENVIRONMENT_VALUE" \
-  "${cmd[@]}"
 done
+
+TARGET_REGIONS=()
+for region in "${REGIONS[@]}"; do
+  if [[ "$region" != "$PRIMARY_REGION" ]]; then
+    TARGET_REGIONS+=("\"$region\"")
+  fi
+done
+AMI_REGIONS_HCL="[${TARGET_REGIONS[*]}]"
+
+INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
+AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-novnc-desktop-ubuntu-24.04}"
+USE_CERTBOT="${USE_CERTBOT:-false}"
+NOVNC_HTTP_PORT="${NOVNC_HTTP_PORT:-80}"
+NOVNC_HTTPS_PORT="${NOVNC_HTTPS_PORT:-443}"
+GIT_SHA="${GIT_SHA:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"
+APP_VERSION="${APP_VERSION:-$(node -p "require('./package.json').version" 2>/dev/null || echo unknown)}"
+
+PACKER_CMD=(
+  packer build
+  -var "aws_region=$PRIMARY_REGION"
+  -var "ami_regions=$AMI_REGIONS_HCL"
+  -var "instance_type=$INSTANCE_TYPE"
+  -var "ami_name_prefix=$AMI_NAME_PREFIX"
+  -var "use_certbot=$USE_CERTBOT"
+  -var "ami_public=$AMI_PUBLIC_VALUE"
+  -var "ami_environment=$AMI_ENVIRONMENT_VALUE"
+  -var "git_sha=$GIT_SHA"
+  -var "app_version=$APP_VERSION"
+  -var "novnc_http_port=$NOVNC_HTTP_PORT"
+  -var "novnc_https_port=$NOVNC_HTTPS_PORT"
+  "$PACKER_TEMPLATE"
+)
+
+echo ""
+echo "Primary build region: $PRIMARY_REGION"
+echo "Copy target regions:  ${REGIONS[*]}"
+echo "Mode:                 $MODE"
+echo "Public:               $AMI_PUBLIC_VALUE"
+echo "Environment:          $AMI_ENVIRONMENT_VALUE"
+
+if [[ "$DRY_RUN" == "true" ]]; then
+  printf '[dry-run] '
+  printf '%q ' "${PACKER_CMD[@]}"
+  printf '\n'
+else
+  (cd "$REPO_ROOT" && "${PACKER_CMD[@]}")
+fi
 
 echo ""
 echo "Done."
