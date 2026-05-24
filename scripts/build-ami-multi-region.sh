@@ -120,7 +120,7 @@ for region in "${REGIONS[@]}"; do
     TARGET_REGIONS+=("\"$region\"")
   fi
 done
-AMI_REGIONS_HCL="[${TARGET_REGIONS[*]}]"
+AMI_REGIONS_HCL="[$(IFS=,; echo "${TARGET_REGIONS[*]}")]"
 
 INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
 AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-novnc-desktop-ubuntu-24.04}"
