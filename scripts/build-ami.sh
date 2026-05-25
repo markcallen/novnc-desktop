@@ -119,11 +119,56 @@ run_cmd() {
     "$@"
 }
 
+check_ami_public_access_block() {
+    local region="$1"
+    local state
+    local aws_error
+
+    if ! command -v aws &> /dev/null; then
+        echo "ERROR: aws CLI is required when AMI_PUBLIC=true."
+        exit 1
+    fi
+
+    if ! state="$(aws ec2 get-image-block-public-access-state \
+        --region "$region" \
+        --query 'ImageBlockPublicAccessState' \
+        --output text 2>&1)"; then
+        aws_error="$state"
+        echo "ERROR: Unable to read AMI block public access state for region '$region'."
+        echo "AWS CLI output:"
+        echo "$aws_error"
+        echo "Verify AWS credentials, permissions (ec2:GetImageBlockPublicAccessState), and awscli version."
+        exit 1
+    fi
+
+    if [[ "$state" != "unblocked" ]]; then
+        echo "ERROR: AMI public sharing is blocked in region '$region' for this account."
+        echo "Current ImageBlockPublicAccessState: $state"
+        echo "AMI_PUBLIC=true cannot succeed until this is disabled."
+        echo ""
+        echo "To disable it in this region, run:"
+        echo "  aws ec2 disable-image-block-public-access --region $region"
+        echo ""
+        echo "Or build private AMIs by setting:"
+        echo "  AMI_PUBLIC=false"
+        exit 1
+    fi
+}
+
 # Check if Packer is installed
 if ! command -v packer &> /dev/null; then
     echo "ERROR: Packer is not installed. Please install Packer first."
     echo "  https://www.packer.io/downloads"
     exit 1
+fi
+
+if [[ "$AMI_PUBLIC" == "true" ]]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "Dry run: would check AMI block public access state in region '$AWS_REGION'."
+    else
+        echo "Checking AMI block public access state..."
+        check_ami_public_access_block "$AWS_REGION"
+    fi
 fi
 
 # Validate Packer configuration

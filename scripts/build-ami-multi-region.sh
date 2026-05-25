@@ -82,6 +82,37 @@ else
   AMI_ENVIRONMENT_VALUE="${AMI_ENVIRONMENT:-test}"
 fi
 
+check_ami_public_access_block() {
+  local region="$1"
+  local state
+  local aws_error
+
+  if ! command -v aws >/dev/null 2>&1; then
+    echo "ERROR: aws CLI is required for --public builds." >&2
+    exit 1
+  fi
+
+  if ! state="$(aws ec2 get-image-block-public-access-state \
+    --region "$region" \
+    --query 'ImageBlockPublicAccessState' \
+    --output text 2>&1)"; then
+    aws_error="$state"
+    echo "ERROR: Unable to read AMI block public access state in $region." >&2
+    echo "AWS CLI output:" >&2
+    echo "$aws_error" >&2
+    echo "Check AWS credentials, permissions (ec2:GetImageBlockPublicAccessState), and awscli version." >&2
+    exit 1
+  fi
+
+  if [[ "$state" != "unblocked" ]]; then
+    echo "ERROR: AMI public sharing is blocked in $region for this account." >&2
+    echo "Current ImageBlockPublicAccessState: $state" >&2
+    echo "Run: aws ec2 disable-image-block-public-access --region $region" >&2
+    echo "Or run this script with --private." >&2
+    exit 1
+  fi
+}
+
 count_matching_public_amis() {
   local region="$1"
 
@@ -102,6 +133,7 @@ for region in "${REGIONS[@]}"; do
   echo "=== Region: $region ==="
 
   if [[ "$MODE" == "public" ]]; then
+    check_ami_public_access_block "$region"
     public_count="$(count_matching_public_amis "$region")"
     echo "Public AMIs matching prefix '${AMI_NAME_PREFIX}-*': $public_count"
 
