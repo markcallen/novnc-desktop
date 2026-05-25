@@ -85,6 +85,7 @@ fi
 check_ami_public_access_block() {
   local region="$1"
   local state
+  local aws_error
 
   if ! command -v aws >/dev/null 2>&1; then
     echo "ERROR: aws CLI is required for --public builds." >&2
@@ -94,14 +95,18 @@ check_ami_public_access_block() {
   if ! state="$(aws ec2 get-image-block-public-access-state \
     --region "$region" \
     --query 'ImageBlockPublicAccessState' \
-    --output text 2>/dev/null)"; then
+    --output text 2>&1)"; then
+    aws_error="$state"
     echo "ERROR: Unable to read AMI block public access state in $region." >&2
-    echo "Check AWS credentials and permissions, then retry." >&2
+    echo "AWS CLI output:" >&2
+    echo "$aws_error" >&2
+    echo "Check AWS credentials, permissions (ec2:GetImageBlockPublicAccessState), and awscli version." >&2
     exit 1
   fi
 
-  if [[ "$state" == "block-new-sharing" ]]; then
+  if [[ "$state" != "unblocked" ]]; then
     echo "ERROR: AMI public sharing is blocked in $region for this account." >&2
+    echo "Current ImageBlockPublicAccessState: $state" >&2
     echo "Run: aws ec2 disable-image-block-public-access --region $region" >&2
     echo "Or run this script with --private." >&2
     exit 1
