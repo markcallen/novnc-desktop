@@ -253,6 +253,43 @@ baked the content in), and again by the full smoke suite.
 | AC-AMI-06 | FR-8.8              | `novnc-set-base-url.service` is enabled and active on an AMI-launched instance                                                                 | `infra-ami.sh` SSH check + smoke suite |
 | AC-AMI-07 | FR-8.9              | After boot, the URL returned by `novnc-desktop-url` contains the instance's public IP or hostname — not the build-time placeholder `default`   | smoke suite                            |
 
+### Multi-user sessions — verified by `pnpm test` after `infra:up` or `infra:ami`
+
+These criteria confirm the multi-user registry, token scoping, and per-user routing required by FR-9. They apply to both provisioning paths.
+
+| ID          | Requirement covered | Observable outcome                                                                                                  | Verified by               |
+| ----------- | ------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| AC-MULTI-01 | FR-9.1              | `/etc/novnc-auth/users.json` exists on the provisioned host                                                         | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-02 | FR-9.1, FR-9.7      | The configured `auth_initial_user` is present in the registry with a `display`, `ws_port`, and a `~/.novnc-gen-key` | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-03 | FR-9.6              | `GET /user-status?user=<initial_user>` returns 200 and the registry entry                                           | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-04 | FR-9.6              | `GET /user-status?user=<unknown>` returns 404                                                                       | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-05 | FR-9.5              | `POST /register` with valid body creates the user and returns a `gen_key`                                           | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-06 | FR-9.5              | `POST /register` rejects `ws_port` outside 6001–9999 with 400                                                       | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-07 | FR-9.5              | `POST /register` rejects `display` outside 1–9999 with 400                                                          | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-08 | FR-9.4              | `POST /generate?user=<unknown>` returns 404                                                                         | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-09 | FR-9.4              | `POST /generate` with a wrong `gen_key` returns 403                                                                 | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-10 | FR-9.4              | `POST /generate` with the correct `gen_key` returns a URL containing `/access?token=`                               | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-11 | FR-9.3              | `GET /verify` with a valid token cookie returns 200 and `X-VNC-Backend: 127.0.0.1:<port>`; returns 401 without one  | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-12 | FR-9.8              | `novnc-user-setup` is present at `/usr/local/bin/novnc-user-setup` and executable                                   | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-13 | FR-9.8              | `/etc/sudoers.d/novnc-user-setup` is installed                                                                      | `multiuser.spec.ts` (SSH) |
+| AC-MULTI-14 | FR-9.8              | `novnc-desktop-url` prints a valid access URL and expiry for the initial user                                       | `multiuser.spec.ts` (SSH) |
+
+### Token integrity — verified by `pnpm test:unit:auth`
+
+These criteria confirm the HMAC token cryptography in isolation, without a running server.
+
+| ID          | Requirement covered | Observable outcome                                                         | Verified by                   |
+| ----------- | ------------------- | -------------------------------------------------------------------------- | ----------------------------- |
+| AC-TOKEN-01 | FR-9.2              | `make_token` / `verify_token` round-trip: valid token is accepted          | `test_novnc_auth.py` (Python) |
+| AC-TOKEN-02 | FR-9.2              | Token with TTL = −1 is immediately rejected as expired                     | `test_novnc_auth.py` (Python) |
+| AC-TOKEN-03 | FR-9.2              | Token signed with a different secret is rejected                           | `test_novnc_auth.py` (Python) |
+| AC-TOKEN-04 | FR-9.2              | Tampered signature is rejected                                             | `test_novnc_auth.py` (Python) |
+| AC-TOKEN-05 | FR-9.2              | Tampered username in payload (with original sig) is rejected               | `test_novnc_auth.py` (Python) |
+| AC-TOKEN-06 | FR-9.2              | Tampered `ws_port` in payload (with original sig) is rejected              | `test_novnc_auth.py` (Python) |
+| AC-TOKEN-07 | FR-9.2              | Tampered expiry extension (with original sig) is rejected                  | `test_novnc_auth.py` (Python) |
+| AC-TOKEN-08 | FR-9.2              | Garbage and malformed token strings are rejected without exceptions        | `test_novnc_auth.py` (Python) |
+| AC-TOKEN-09 | FR-9.2              | Username and `ws_port` are faithfully preserved through a token round-trip | `test_novnc_auth.py` (Python) |
+
 ---
 
 ## Architecture
