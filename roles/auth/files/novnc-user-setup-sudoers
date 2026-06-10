@@ -1,0 +1,4 @@
+# Allow any user to run novnc-user-setup as root without a password.
+# The script itself validates that the caller may only set up their own
+# desktop session (enforced via the SUDO_USER environment variable).
+ALL ALL=(root) NOPASSWD: /usr/local/bin/novnc-user-setup

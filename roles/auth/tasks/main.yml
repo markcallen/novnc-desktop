@@ -78,6 +78,23 @@
     group: root
     mode: '0755'
 
+- name: Install novnc-user-setup script
+  ansible.builtin.copy:
+    src: novnc-user-setup
+    dest: /usr/local/bin/novnc-user-setup
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install sudoers rule for novnc-user-setup
+  ansible.builtin.copy:
+    src: novnc-user-setup-sudoers
+    dest: /etc/sudoers.d/novnc-user-setup
+    owner: root
+    group: root
+    mode: '0440'
+    validate: /usr/sbin/visudo -cf %s
+
 - name: Install novnc-rotate-secret script
   ansible.builtin.copy:
     src: novnc-rotate-secret

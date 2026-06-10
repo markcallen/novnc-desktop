@@ -7,13 +7,56 @@
 # Run this command over SSH to get a URL you can paste into a browser.
 # No VNC password is needed; the URL itself is the credential.
 # Each OS user on this machine gets an independent desktop session.
+# If no session exists yet for the calling user, one is created automatically.
 
 set -euo pipefail
 
+AUTH_URL="http://127.0.0.1:8898"
 CURRENT_USER=$(id -un)
+SETUP_CMD="/usr/local/bin/novnc-user-setup"
+TMP_BODY=$(mktemp)
+trap 'rm -f "$TMP_BODY"' EXIT
 
-RESULT=$(curl -sf -X POST \
-  "http://127.0.0.1:8898/generate?user=${CURRENT_USER}" \
+# ---------------------------------------------------------------------------
+# Check registration status. Distinguishes:
+#   200  → registered
+#   404  → not registered (service is up)
+#   000  → connection failed (service is down)
+# ---------------------------------------------------------------------------
+HTTP_CODE=$(curl -s -o "$TMP_BODY" -w "%{http_code}" --max-time 5 \
+  "${AUTH_URL}/user-status?user=${CURRENT_USER}" 2>/dev/null) || HTTP_CODE="000"
+
+case "$HTTP_CODE" in
+  200)
+    # Already registered — skip setup.
+    ;;
+  404)
+    # Service is up but user is not registered — set up on demand.
+    echo "No desktop session found for '${CURRENT_USER}'. Setting up now..." >&2
+
+    if ! sudo "${SETUP_CMD}" "${CURRENT_USER}"; then
+      echo "" >&2
+      echo "ERROR: Desktop setup failed for user '${CURRENT_USER}'." >&2
+      echo "       Check system logs: journalctl -xe" >&2
+      exit 1
+    fi
+    ;;
+  000)
+    echo "ERROR: Could not reach the novnc-auth service." >&2
+    echo "       Is novnc-auth.service running?" >&2
+    exit 1
+    ;;
+  *)
+    echo "ERROR: Unexpected response from novnc-auth (HTTP ${HTTP_CODE})." >&2
+    exit 1
+    ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Generate and display the access URL.
+# ---------------------------------------------------------------------------
+RESULT=$(curl -sf --max-time 10 -X POST \
+  "${AUTH_URL}/generate?user=${CURRENT_USER}" \
   2>/dev/null) || {
   echo "ERROR: Could not reach the novnc-auth service." >&2
   echo "       Is novnc-auth.service running?" >&2
@@ -26,10 +69,6 @@ ERROR=$(printf '%s' "$RESULT" | python3 -c \
 
 if [ -n "$ERROR" ]; then
   echo "ERROR: $ERROR" >&2
-  echo "" >&2
-  echo "  Your user account ('${CURRENT_USER}') does not have a desktop session" >&2
-  echo "  configured yet. A desktop must be set up before a URL can be issued." >&2
-  echo "" >&2
   exit 1
 fi
 

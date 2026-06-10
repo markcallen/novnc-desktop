@@ -1,0 +1,226 @@
+#!/bin/bash
+# novnc-user-setup: provision an on-demand desktop session for an OS user.
+#
+# Usage (via sudo):
+#   sudo novnc-user-setup <username>
+#
+# What this script does:
+#   1. Allocates the next free VNC display number from the user registry.
+#   2. Creates ~/.vnc/config and ~/.vnc/xstartup for the user if absent.
+#   3. Adds the user to /etc/tigervnc/vncserver.users.
+#   4. Installs a per-display websockify systemd service unit.
+#   5. Enables and starts tigervncserver@:<N> and novnc-user@<N>.
+#   6. Registers the user in the novnc-auth service.
+#
+# Security:
+#   When invoked via sudo, the calling user (SUDO_USER) must match the
+#   username argument. Root may run it for any user.
+#
+# Idempotency:
+#   If the user is already registered the script exits 0 immediately.
+#   Display allocation is protected by an advisory lock file.
+
+set -euo pipefail
+
+USERS_FILE="/etc/novnc-auth/users.json"
+LOCK_FILE="/var/lock/novnc-user-setup.lock"
+AUTH_URL="http://127.0.0.1:8898"
+VNC_USERS_FILE="/etc/tigervnc/vncserver.users"
+VNC_GEOMETRY="1280x720"
+VNC_DEPTH="24"
+
+# ---------------------------------------------------------------------------
+# Validate arguments
+# ---------------------------------------------------------------------------
+
+if [ $# -ne 1 ]; then
+  echo "Usage: novnc-user-setup <username>" >&2
+  exit 1
+fi
+
+USERNAME="$1"
+
+# Validate the username is a safe identifier (alphanumeric, dash, underscore).
+if ! echo "$USERNAME" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+  echo "ERROR: Invalid username '${USERNAME}'." >&2
+  exit 1
+fi
+
+# When called via sudo, enforce that the user may only set up their own desktop.
+if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "${USERNAME}" ]; then
+  echo "ERROR: You may only set up a desktop for your own user account." >&2
+  echo "       (Requested: '${USERNAME}', caller: '${SUDO_USER}')" >&2
+  exit 1
+fi
+
+# Confirm the OS user exists.
+USER_HOME=$(getent passwd "$USERNAME" | cut -d: -f6) || {
+  echo "ERROR: User '${USERNAME}' does not exist on this system." >&2
+  exit 1
+}
+if [ -z "$USER_HOME" ]; then
+  echo "ERROR: Could not determine home directory for '${USERNAME}'." >&2
+  exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Check if already registered (idempotent fast-path)
+# ---------------------------------------------------------------------------
+
+STATUS_JSON=$(curl -sf "${AUTH_URL}/user-status?user=${USERNAME}" 2>/dev/null || true)
+if echo "$STATUS_JSON" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+sys.exit(0 if 'ws_port' in d else 1)
+" 2>/dev/null; then
+  echo "Desktop for user '${USERNAME}' is already configured." >&2
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Allocate display number under an advisory lock to prevent races
+# ---------------------------------------------------------------------------
+
+(
+  flock -x 200
+
+  # Re-check registration inside the lock (another concurrent call might have
+  # finished between our check above and acquiring the lock).
+  STATUS_JSON=$(curl -sf "${AUTH_URL}/user-status?user=${USERNAME}" 2>/dev/null || true)
+  if echo "$STATUS_JSON" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+sys.exit(0 if 'ws_port' in d else 1)
+" 2>/dev/null; then
+    echo "Desktop for user '${USERNAME}' is already configured." >&2
+    exit 0
+  fi
+
+  # Pick the lowest unused display number starting from 1.
+  NEXT_DISPLAY=$(python3 - <<'PYEOF'
+import json, sys
+
+users = {}
+try:
+    with open("/etc/novnc-auth/users.json") as f:
+        users = json.load(f)
+except Exception:
+    pass
+
+used = {int(v["display"]) for v in users.values() if "display" in v}
+n = 1
+while n in used:
+    n += 1
+print(n)
+PYEOF
+  )
+
+  WS_PORT=$((6080 + NEXT_DISPLAY))
+  VNC_PORT=$((5900 + NEXT_DISPLAY))
+
+  echo "Configuring desktop for '${USERNAME}' on display :${NEXT_DISPLAY} (ws_port ${WS_PORT})..." >&2
+
+  # -------------------------------------------------------------------------
+  # 1. Create ~/.vnc directory
+  # -------------------------------------------------------------------------
+  mkdir -p "${USER_HOME}/.vnc"
+  chown "${USERNAME}:${USERNAME}" "${USER_HOME}/.vnc"
+  chmod 700 "${USER_HOME}/.vnc"
+
+  # -------------------------------------------------------------------------
+  # 2. Write ~/.vnc/config (skip if user already has one)
+  # -------------------------------------------------------------------------
+  if [ ! -f "${USER_HOME}/.vnc/config" ]; then
+    cat > "${USER_HOME}/.vnc/config" << EOF
+geometry=${VNC_GEOMETRY}
+depth=${VNC_DEPTH}
+SecurityTypes=None
+EOF
+    chown "${USERNAME}:${USERNAME}" "${USER_HOME}/.vnc/config"
+  fi
+
+  # -------------------------------------------------------------------------
+  # 3. Write ~/.vnc/xstartup (skip if user already has one)
+  # -------------------------------------------------------------------------
+  if [ ! -f "${USER_HOME}/.vnc/xstartup" ]; then
+    cat > "${USER_HOME}/.vnc/xstartup" << 'XSTARTUP'
+#!/bin/sh
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+export XDG_CURRENT_DESKTOP=openbox
+export XDG_SESSION_DESKTOP=openbox
+
+dbus-launch --exit-with-session sh -lc "
+  openbox-session &
+  tint2 &
+  xterm &
+  wait
+"
+XSTARTUP
+    chmod 755 "${USER_HOME}/.vnc/xstartup"
+    chown "${USERNAME}:${USERNAME}" "${USER_HOME}/.vnc/xstartup"
+  fi
+
+  # -------------------------------------------------------------------------
+  # 4. Add entry to /etc/tigervnc/vncserver.users
+  # -------------------------------------------------------------------------
+  mkdir -p "$(dirname "${VNC_USERS_FILE}")"
+  python3 - << PYEOF
+import re
+
+display = ${NEXT_DISPLAY}
+username = "${USERNAME}"
+path = "${VNC_USERS_FILE}"
+
+try:
+    with open(path) as f:
+        lines = f.readlines()
+except FileNotFoundError:
+    lines = []
+
+# Remove any existing entry for this display.
+pattern = re.compile(r'^:' + str(display) + r'=')
+lines = [l for l in lines if not pattern.match(l)]
+lines.append(f':{display}={username}\n')
+
+with open(path, 'w') as f:
+    f.writelines(lines)
+PYEOF
+
+  # -------------------------------------------------------------------------
+  # 5. Install a per-display websockify systemd service unit
+  # -------------------------------------------------------------------------
+  SERVICE_FILE="/etc/systemd/system/novnc-user@${NEXT_DISPLAY}.service"
+  cat > "${SERVICE_FILE}" << EOF
+[Unit]
+Description=noVNC WebSocket proxy for display :${NEXT_DISPLAY} (${USERNAME})
+After=network.target tigervncserver@:${NEXT_DISPLAY}.service
+Wants=tigervncserver@:${NEXT_DISPLAY}.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/websockify --web=/usr/share/novnc/ ${WS_PORT} 127.0.0.1:${VNC_PORT}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  # -------------------------------------------------------------------------
+  # 6. Enable and start services
+  # -------------------------------------------------------------------------
+  systemctl daemon-reload
+  systemctl enable --now "tigervncserver@:${NEXT_DISPLAY}.service"
+  systemctl enable --now "novnc-user@${NEXT_DISPLAY}.service"
+
+  # -------------------------------------------------------------------------
+  # 7. Register in the novnc-auth service
+  # -------------------------------------------------------------------------
+  curl -sf -X POST "${AUTH_URL}/register" \
+    -H "Content-Type: application/json" \
+    -d "{\"user\": \"${USERNAME}\", \"display\": ${NEXT_DISPLAY}, \"ws_port\": ${WS_PORT}}" \
+    > /dev/null
+
+  echo "Desktop for '${USERNAME}' is ready on display :${NEXT_DISPLAY}." >&2
+
+) 200>"${LOCK_FILE}"
