@@ -31,15 +31,24 @@
 #   VNC_USER   SSH username on the EC2 instance (default: ubuntu)
 #   NOVNC_HOSTNAME      Optional explicit hostname passed in EC2 user-data JSON.
 #   TLS_ZONE            Optional Route53 zone used to generate unique hostname.
-#   NOVNC_CERTBOT_EMAIL Optional certbot email passed in EC2 user-data JSON.
+#   LETSENCRYPT_EMAIL Optional certbot email passed in EC2 user-data JSON.
 #   NOVNC_USE_CERTBOT   true|false to trigger novnc-setup-tls on first boot.
 
 set -euo pipefail
 
+# Compute REPO_ROOT early so .env can be loaded before defaults are applied.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Load .env from the repo root if present (never required; overrides defaults).
+if [[ -f "$REPO_ROOT/.env" ]]; then
+  # shellcheck source=/dev/null
+  set -a; source "$REPO_ROOT/.env"; set +a
+fi
+
 VNC_USER="${VNC_USER:-ubuntu}"
 NOVNC_HOSTNAME="${NOVNC_HOSTNAME:-}"
 TLS_ZONE="${TLS_ZONE:-}"
-NOVNC_CERTBOT_EMAIL="${NOVNC_CERTBOT_EMAIL:-}"
+LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
 NOVNC_USE_CERTBOT="${NOVNC_USE_CERTBOT:-}"
 IAM_INSTANCE_PROFILE="${IAM_INSTANCE_PROFILE:-}"
 VARIANT="openbox"
@@ -68,7 +77,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --certbot-email)
-      NOVNC_CERTBOT_EMAIL="$2"
+      LETSENCRYPT_EMAIL="$2"
       shift 2
       ;;
     --iam-instance-profile)
@@ -123,15 +132,14 @@ if [[ "$NOVNC_USE_CERTBOT" == "true" && -z "$IAM_INSTANCE_PROFILE" ]]; then
   IAM_INSTANCE_PROFILE="novnc-desktop-certbot"
 fi
 
-if [[ "$NOVNC_USE_CERTBOT" == "true" && -z "$NOVNC_CERTBOT_EMAIL" ]]; then
+if [[ "$NOVNC_USE_CERTBOT" == "true" && -z "$LETSENCRYPT_EMAIL" ]]; then
   echo "ERROR: certbot is enabled but no email was provided." >&2
-  echo "Set --certbot-email <valid-email> (or NOVNC_CERTBOT_EMAIL)." >&2
+  echo "Set --certbot-email <valid-email> (or LETSENCRYPT_EMAIL)." >&2
   exit 1
 fi
 
 LABEL="infra:ami"
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TF_DIR="$REPO_ROOT/smoke/ec2"
 KEYS_DIR="$REPO_ROOT/.smoke-keys"
 STATE_DIR="$REPO_ROOT/.smoke-state"
@@ -183,7 +191,7 @@ echo "[$LABEL] HTTPS port:    $HTTPS_PORT"
 echo "[$LABEL] Environment:   $ENVIRONMENT"
 echo "[$LABEL] TLS zone:      ${TLS_ZONE:-<none>}"
 echo "[$LABEL] Hostname:      ${NOVNC_HOSTNAME:-<auto/imds>}"
-echo "[$LABEL] Certbot email: ${NOVNC_CERTBOT_EMAIL:-<default>}"
+echo "[$LABEL] Certbot email: ${LETSENCRYPT_EMAIL:-<default>}"
 echo "[$LABEL] Use certbot:   $NOVNC_USE_CERTBOT"
 echo "[$LABEL] IAM profile:   ${IAM_INSTANCE_PROFILE:-<none>}"
 
@@ -197,7 +205,7 @@ terraform apply -auto-approve -input=false \
   -var "novnc_https_port=$HTTPS_PORT" \
   -var "novnc_hostname=$NOVNC_HOSTNAME" \
   -var "tls_zone=$TLS_ZONE" \
-  -var "novnc_certbot_email=$NOVNC_CERTBOT_EMAIL" \
+  -var "novnc_certbot_email=$LETSENCRYPT_EMAIL" \
   -var "novnc_use_certbot=$NOVNC_USE_CERTBOT" \
   -var "iam_instance_profile=$IAM_INSTANCE_PROFILE"
 
@@ -313,7 +321,7 @@ cat > "$STATE_FILE" <<EOF
   "novncHttpPort": $HTTP_PORT,
   "novncHttpsPort": $HTTPS_PORT,
   "tlsDomain": "$TLS_HOSTNAME",
-  "certbotEmail": "$NOVNC_CERTBOT_EMAIL",
+  "certbotEmail": "$LETSENCRYPT_EMAIL",
   "verificationPassed": $AMI_VERIFY_PASS,
   "verificationFailureReason": "${VERIFY_FAILURE_REASON}",
   "accessUrl": "$ACCESS_URL"

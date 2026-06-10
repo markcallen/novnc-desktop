@@ -34,5 +34,8 @@ smoke/ec2/terraform.tfvars
 playwright-report/
 test-results/
 
+# local environment overrides
+.env
+
 # ai files
 .claude/scheduled_tasks.lock
