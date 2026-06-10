@@ -14,6 +14,7 @@ set -euo pipefail
 AUTH_URL="http://127.0.0.1:8898"
 CURRENT_USER=$(id -un)
 SETUP_CMD="/usr/local/bin/novnc-user-setup"
+GEN_KEY_FILE="${HOME}/.novnc-gen-key"
 TMP_BODY=$(mktemp)
 trap 'rm -f "$TMP_BODY"' EXIT
 
@@ -28,7 +29,15 @@ HTTP_CODE=$(curl -s -o "$TMP_BODY" -w "%{http_code}" --max-time 5 \
 
 case "$HTTP_CODE" in
   200)
-    # Already registered — skip setup.
+    # Already registered — but ensure the key file exists (it may be absent on
+    # systems provisioned before key-based auth was introduced).
+    if [[ ! -f "$GEN_KEY_FILE" ]]; then
+      echo "Refreshing desktop credentials for '${CURRENT_USER}'..." >&2
+      if ! sudo "${SETUP_CMD}" "${CURRENT_USER}"; then
+        echo "ERROR: Could not refresh credentials for '${CURRENT_USER}'." >&2
+        exit 1
+      fi
+    fi
     ;;
   404)
     # Service is up but user is not registered — set up on demand.
@@ -55,8 +64,14 @@ esac
 # ---------------------------------------------------------------------------
 # Generate and display the access URL.
 # ---------------------------------------------------------------------------
+GEN_KEY=$(cat "$GEN_KEY_FILE" 2>/dev/null) || {
+  echo "ERROR: Could not read credentials from ${GEN_KEY_FILE}." >&2
+  echo "       Run 'sudo novnc-user-setup ${CURRENT_USER}' to set up your desktop." >&2
+  exit 1
+}
+
 RESULT=$(curl -sf --max-time 10 -X POST \
-  "${AUTH_URL}/generate?user=${CURRENT_USER}" \
+  "${AUTH_URL}/generate?user=${CURRENT_USER}&key=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.stdin.read().strip(),safe=''))" <<< "$GEN_KEY")" \
   2>/dev/null) || {
   echo "ERROR: Could not reach the novnc-auth service." >&2
   echo "       Is novnc-auth.service running?" >&2

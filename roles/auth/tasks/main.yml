@@ -16,6 +16,34 @@
     group: novnc-auth
     mode: '0750'
 
+- name: Generate initial user gen_key (once; cached for idempotent re-runs)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    CACHE="/etc/novnc-auth/.initial-gen-key"
+    if [ ! -f "$CACHE" ]; then
+      python3 -c "import secrets; print(secrets.token_hex(16))" > "$CACHE"
+      chmod 600 "$CACHE"
+      chown novnc-auth:novnc-auth "$CACHE"
+    fi
+    cat "$CACHE"
+  register: _initial_gen_key
+  changed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Set auth_initial_gen_key fact
+  ansible.builtin.set_fact:
+    auth_initial_gen_key: '{{ _initial_gen_key.stdout | trim }}'
+
+- name: Write initial user gen_key file
+  ansible.builtin.copy:
+    content: '{{ auth_initial_gen_key }}'
+    dest: '~{{ auth_initial_user }}/.novnc-gen-key'
+    owner: '{{ auth_initial_user }}'
+    group: '{{ auth_initial_user }}'
+    mode: '0400'
+    force: false
+
 - name: Generate HMAC secret (if not already present)
   ansible.builtin.shell: |
     set -euo pipefail

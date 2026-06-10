@@ -34,6 +34,7 @@ import hmac
 import http.server
 import json
 import os
+import secrets
 import sys
 import tempfile
 import time
@@ -270,6 +271,17 @@ class _AuthHandler(http.server.BaseHTTPRequestHandler):
             )
             return
 
+        # Verify the caller-supplied key matches the per-user gen_key stored in
+        # the registry. This prevents a local user from minting tokens for
+        # another user's session. Only the user who ran novnc-user-setup can
+        # read their own key from ~/.novnc-gen-key.
+        stored_key = entry.get("gen_key", "")
+        if stored_key:
+            provided_key = qs.get("key", [""])[0]
+            if not hmac.compare_digest(provided_key, stored_key):
+                self._send_json(403, {"error": "Invalid or missing gen_key"})
+                return
+
         ws_port = int(entry["ws_port"])
         token, expiry_ms = make_token(
             self.secret, self.config["ttl_seconds"], username, ws_port
@@ -307,11 +319,29 @@ class _AuthHandler(http.server.BaseHTTPRequestHandler):
             )
             return
 
-        entry = {"display": int(display), "ws_port": int(ws_port)}
+        try:
+            display_int = int(display)
+            ws_port_int = int(ws_port)
+        except (ValueError, TypeError):
+            self._send_json(400, {"error": "display and ws_port must be integers"})
+            return
+
+        if not (1 <= display_int <= 9999):
+            self._send_json(400, {"error": "display must be between 1 and 9999"})
+            return
+
+        # Restrict ws_port to the websockify range to prevent SSRF to other
+        # local services. nginx proxies to ws_port from the signed token.
+        if not (6001 <= ws_port_int <= 9999):
+            self._send_json(400, {"error": "ws_port must be between 6001 and 9999"})
+            return
+
+        gen_key = secrets.token_hex(16)
+        entry = {"display": display_int, "ws_port": ws_port_int, "gen_key": gen_key}
         users = _load_users()
         users[username] = entry
         _save_users(users)
-        self._send_json(200, {"user": username, **entry})
+        self._send_json(200, {"user": username, "display": display_int, "ws_port": ws_port_int, "gen_key": gen_key})
 
     def _handle_user_status(self, parsed: urllib.parse.ParseResult) -> None:
         """Return user registry entry. Localhost only."""

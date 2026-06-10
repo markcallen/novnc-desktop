@@ -40,8 +40,9 @@ fi
 
 USERNAME="$1"
 
-# Validate the username is a safe identifier (alphanumeric, dash, underscore).
-if ! echo "$USERNAME" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+# Validate the username is a safe identifier.
+# Allows alphanumeric, underscore, dash, and dot (dot is valid in Linux usernames).
+if ! echo "$USERNAME" | grep -qE '^[a-zA-Z0-9_.-]+$'; then
   echo "ERROR: Invalid username '${USERNAME}'." >&2
   exit 1
 fi
@@ -64,18 +65,52 @@ if [ -z "$USER_HOME" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Check if already registered (idempotent fast-path)
+# Check auth service reachability, then handle idempotent fast-path
 # ---------------------------------------------------------------------------
 
-STATUS_JSON=$(curl -sf "${AUTH_URL}/user-status?user=${USERNAME}" 2>/dev/null || true)
-if echo "$STATUS_JSON" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-sys.exit(0 if 'ws_port' in d else 1)
-" 2>/dev/null; then
-  echo "Desktop for user '${USERNAME}' is already configured." >&2
-  exit 0
-fi
+_STATUS_BODY=$(mktemp)
+trap 'rm -f "$_STATUS_BODY"' EXIT
+HTTP_CODE=$(curl -s -o "$_STATUS_BODY" -w "%{http_code}" --max-time 5 \
+  "${AUTH_URL}/user-status?user=${USERNAME}" 2>/dev/null) || HTTP_CODE="000"
+STATUS_JSON=$(cat "$_STATUS_BODY")
+
+case "$HTTP_CODE" in
+  200)
+    GEN_KEY_FILE="${USER_HOME}/.novnc-gen-key"
+    if [ -f "$GEN_KEY_FILE" ]; then
+      echo "Desktop for user '${USERNAME}' is already configured." >&2
+      exit 0
+    fi
+    # Registered but no key file — re-register with existing display/ws_port
+    # to generate a gen_key and write the key file.
+    EXISTING_DISPLAY=$(echo "$STATUS_JSON" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['display'])")
+    EXISTING_WS_PORT=$(echo "$STATUS_JSON" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['ws_port'])")
+    REG_RESULT=$(curl -sf -X POST "${AUTH_URL}/register" \
+      -H "Content-Type: application/json" \
+      -d "{\"user\": \"${USERNAME}\", \"display\": ${EXISTING_DISPLAY}, \"ws_port\": ${EXISTING_WS_PORT}}")
+    GEN_KEY=$(echo "$REG_RESULT" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['gen_key'])")
+    echo "$GEN_KEY" > "$GEN_KEY_FILE"
+    chown "${USERNAME}:${USERNAME}" "$GEN_KEY_FILE"
+    chmod 0400 "$GEN_KEY_FILE"
+    echo "Desktop for user '${USERNAME}' is already configured (credentials refreshed)." >&2
+    exit 0
+    ;;
+  404)
+    # Not registered — proceed with full setup below.
+    ;;
+  000)
+    echo "ERROR: Could not reach the novnc-auth service at ${AUTH_URL}." >&2
+    echo "       Is novnc-auth.service running? Try: systemctl status novnc-auth.service" >&2
+    exit 1
+    ;;
+  *)
+    echo "ERROR: Unexpected response from novnc-auth (HTTP ${HTTP_CODE})." >&2
+    exit 1
+    ;;
+esac
 
 # ---------------------------------------------------------------------------
 # Allocate display number under an advisory lock to prevent races
@@ -84,15 +119,38 @@ fi
 (
   flock -x 200
 
-  # Re-check registration inside the lock (another concurrent call might have
-  # finished between our check above and acquiring the lock).
-  STATUS_JSON=$(curl -sf "${AUTH_URL}/user-status?user=${USERNAME}" 2>/dev/null || true)
-  if echo "$STATUS_JSON" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-sys.exit(0 if 'ws_port' in d else 1)
-" 2>/dev/null; then
-    echo "Desktop for user '${USERNAME}' is already configured." >&2
+  # Re-check inside the lock (another concurrent call may have finished between
+  # our check above and acquiring the lock).
+  _LOCK_STATUS_BODY=$(mktemp)
+  LOCK_HTTP_CODE=$(curl -s -o "$_LOCK_STATUS_BODY" -w "%{http_code}" --max-time 5 \
+    "${AUTH_URL}/user-status?user=${USERNAME}" 2>/dev/null) || LOCK_HTTP_CODE="000"
+  LOCK_STATUS_JSON=$(cat "$_LOCK_STATUS_BODY")
+  rm -f "$_LOCK_STATUS_BODY"
+
+  if [ "$LOCK_HTTP_CODE" = "000" ]; then
+    echo "ERROR: Lost connection to novnc-auth service inside lock." >&2
+    exit 1
+  fi
+
+  if [ "$LOCK_HTTP_CODE" = "200" ]; then
+    GEN_KEY_FILE="${USER_HOME}/.novnc-gen-key"
+    if [ -f "$GEN_KEY_FILE" ]; then
+      echo "Desktop for user '${USERNAME}' is already configured." >&2
+      exit 0
+    fi
+    EXISTING_DISPLAY=$(echo "$LOCK_STATUS_JSON" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['display'])")
+    EXISTING_WS_PORT=$(echo "$LOCK_STATUS_JSON" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['ws_port'])")
+    REG_RESULT=$(curl -sf -X POST "${AUTH_URL}/register" \
+      -H "Content-Type: application/json" \
+      -d "{\"user\": \"${USERNAME}\", \"display\": ${EXISTING_DISPLAY}, \"ws_port\": ${EXISTING_WS_PORT}}")
+    GEN_KEY=$(echo "$REG_RESULT" | python3 -c \
+      "import sys,json; print(json.load(sys.stdin)['gen_key'])")
+    echo "$GEN_KEY" > "$GEN_KEY_FILE"
+    chown "${USERNAME}:${USERNAME}" "$GEN_KEY_FILE"
+    chmod 0400 "$GEN_KEY_FILE"
+    echo "Desktop for user '${USERNAME}' is already configured (credentials refreshed)." >&2
     exit 0
   fi
 
@@ -214,12 +272,16 @@ EOF
   systemctl enable --now "novnc-user@${NEXT_DISPLAY}.service"
 
   # -------------------------------------------------------------------------
-  # 7. Register in the novnc-auth service
+  # 7. Register in the novnc-auth service and write the per-user gen_key
   # -------------------------------------------------------------------------
-  curl -sf -X POST "${AUTH_URL}/register" \
+  REG_RESULT=$(curl -sf -X POST "${AUTH_URL}/register" \
     -H "Content-Type: application/json" \
-    -d "{\"user\": \"${USERNAME}\", \"display\": ${NEXT_DISPLAY}, \"ws_port\": ${WS_PORT}}" \
-    > /dev/null
+    -d "{\"user\": \"${USERNAME}\", \"display\": ${NEXT_DISPLAY}, \"ws_port\": ${WS_PORT}}")
+  GEN_KEY=$(echo "$REG_RESULT" | python3 -c \
+    "import sys,json; print(json.load(sys.stdin)['gen_key'])")
+  echo "$GEN_KEY" > "${USER_HOME}/.novnc-gen-key"
+  chown "${USERNAME}:${USERNAME}" "${USER_HOME}/.novnc-gen-key"
+  chmod 0400 "${USER_HOME}/.novnc-gen-key"
 
   echo "Desktop for '${USERNAME}' is ready on display :${NEXT_DISPLAY}." >&2
 

@@ -1,6 +1,7 @@
 {
-  "{{ auth_initial_user }}": {
+  {{ auth_initial_user | to_json }}: {
     "display": {{ auth_initial_display | int }},
-    "ws_port": {{ auth_initial_ws_port | int }}
+    "ws_port": {{ auth_initial_ws_port | int }},
+    "gen_key": {{ auth_initial_gen_key | to_json }}
   }
 }
