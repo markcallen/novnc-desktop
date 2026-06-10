@@ -27,15 +27,15 @@ There is no lightweight, self-hosted, provider-agnostic solution that gives a de
 4. Self-signed TLS certificates work out of the box. Let's Encrypt is available as an opt-in upgrade when a public domain is configured.
 5. The desktop environment is configurable: Openbox (default, lightweight), Pantheon (Elementary), or Deepin.
 6. The role is usable standalone and as a component of larger automation stacks (specifically `ai-agent-desktop`, which relies on this role for its nginx access layer).
+7. Multiple OS users on the same host can each have an independent desktop session. Each session is isolated by VNC display number and websockify port. Running `novnc-desktop-url` creates a desktop for the calling OS user if one does not already exist.
 
 ---
 
 ## Non-Goals
 
-- **Multi-user support.** One desktop session per host. Multiple concurrent users on one machine are out of scope.
+- **Display manager / login screen.** The session is started directly by TigerVNC; there is no graphical login prompt. _(Moved from Non-Goals — display manager masking is still enforced.)_
 - **Windows or non-Ubuntu Linux.** Ubuntu 24.04 LTS (Noble) is the only supported target OS.
 - **Managed cloud infrastructure.** The role configures software on an existing host. Provisioning VMs, DNS records, or load balancers is the caller's responsibility.
-- **Display manager / login screen.** The session is started directly by TigerVNC; there is no graphical login prompt.
 - **Persistent desktop state across reprovisioning.** User home directories are preserved; the role does not manage backups or snapshots.
 
 ---
@@ -149,6 +149,22 @@ first boot. Post-launch setup is limited to TLS configuration (via
 | FR-8.8  | An EC2 instance launched from the AMI has `novnc-set-base-url` present at `/usr/local/bin/novnc-set-base-url` and `novnc-set-base-url.service` enabled, without any post-launch Ansible run.                                                                                                                                       |
 | FR-8.9  | On every boot of an AMI-launched instance, `novnc-set-base-url.service` queries EC2 instance metadata and writes the instance's public hostname (or public IPv4 fallback) as the `novnc-auth` base URL, so that `novnc-desktop-url` returns a URL containing the actual public address — not the build-time placeholder `default`. |
 | FR-8.10 | When a Let's Encrypt certificate is present (i.e. `novnc-setup-tls` has been run), `novnc-set-base-url.service` skips the metadata update on reboot so that the domain-based URL configured by `novnc-setup-tls` is preserved.                                                                                                     |
+
+### FR-9 — Multi-user desktop sessions
+
+Multiple OS users on the same host may each run an independent desktop session. Each session is isolated: a distinct VNC display (`:N`) and a dedicated websockify port (`6080 + N`). nginx routes each authenticated browser session to the correct websockify backend based on user identity embedded in the signed access token.
+
+| ID     | Requirement                                                                                                                                                                                          |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-9.1 | The auth service maintains a user registry at `/etc/novnc-auth/users.json` that maps each OS username to its assigned display number and websockify port.                                            |
+| FR-9.2 | Access tokens embed the username and websockify port in the signed payload. A tampered port is rejected along with a tampered expiry.                                                                |
+| FR-9.3 | `GET /verify` returns an `X-VNC-Backend` response header containing `127.0.0.1:<ws_port>` for the authenticated user. nginx uses this header to route the request to the correct websockify process. |
+| FR-9.4 | `POST /generate?user=<name>` (localhost only) mints a token scoped to the named OS user. If the user is not registered, the endpoint returns a `404` JSON error.                                     |
+| FR-9.5 | `POST /register` (localhost only) accepts `{"user": "<name>", "display": N, "ws_port": M}` and adds or updates the user in the registry. Returns the stored entry.                                   |
+| FR-9.6 | `GET /user-status?user=<name>` (localhost only) returns the user's registry entry or a `404` JSON error if the user is not registered.                                                               |
+| FR-9.7 | The provisioning playbook pre-registers the configured `auth_initial_user` (default: `ubuntu`) in the user registry so the single-user workflow continues to work without any additional setup.      |
+| FR-9.8 | `novnc-desktop-url` passes the calling OS user (`id -un`) to `/generate`. If the user is not registered, it exits with a non-zero status and a human-readable message explaining the next step.      |
+| FR-9.9 | nginx uses `auth_request_set` to capture the `X-VNC-Backend` header from `/verify` and applies it as the `proxy_pass` target, routing each session to its user-specific websockify port.             |
 
 ---
 

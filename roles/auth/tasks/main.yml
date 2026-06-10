@@ -35,6 +35,15 @@
     mode: '0640'
   notify: Restart novnc-auth
 
+- name: Initialize user registry (skip if already present to preserve live registrations)
+  ansible.builtin.template:
+    src: users.json.j2
+    dest: /etc/novnc-auth/users.json
+    owner: novnc-auth
+    group: novnc-auth
+    mode: '0640'
+    force: false
+
 - name: Create auth service library directory
   ansible.builtin.file:
     path: /usr/local/lib/novnc-auth

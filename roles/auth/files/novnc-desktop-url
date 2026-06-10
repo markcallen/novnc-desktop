@@ -6,17 +6,37 @@
 #
 # Run this command over SSH to get a URL you can paste into a browser.
 # No VNC password is needed; the URL itself is the credential.
+# Each OS user on this machine gets an independent desktop session.
 
 set -euo pipefail
 
-RESULT=$(curl -sf -X POST http://127.0.0.1:8898/generate 2>/dev/null) || {
+CURRENT_USER=$(id -un)
+
+RESULT=$(curl -sf -X POST \
+  "http://127.0.0.1:8898/generate?user=${CURRENT_USER}" \
+  2>/dev/null) || {
   echo "ERROR: Could not reach the novnc-auth service." >&2
   echo "       Is novnc-auth.service running?" >&2
   exit 1
 }
 
-URL=$(printf '%s' "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['url'])")
-EXPIRES=$(printf '%s' "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['expires_at'])")
+ERROR=$(printf '%s' "$RESULT" | python3 -c \
+  "import sys,json; d=json.load(sys.stdin); print(d.get('error',''))" \
+  2>/dev/null || true)
+
+if [ -n "$ERROR" ]; then
+  echo "ERROR: $ERROR" >&2
+  echo "" >&2
+  echo "  Your user account ('${CURRENT_USER}') does not have a desktop session" >&2
+  echo "  configured yet. A desktop must be set up before a URL can be issued." >&2
+  echo "" >&2
+  exit 1
+fi
+
+URL=$(printf '%s' "$RESULT" | python3 -c \
+  "import sys,json; print(json.load(sys.stdin)['url'])")
+EXPIRES=$(printf '%s' "$RESULT" | python3 -c \
+  "import sys,json; print(json.load(sys.stdin)['expires_at'])")
 
 echo ""
 echo "  Desktop URL : $URL"
