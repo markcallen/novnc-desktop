@@ -215,9 +215,20 @@ class _AuthHandler(http.server.BaseHTTPRequestHandler):
 
         valid, _, _ = verify_token(self.secret, token)
         if not valid:
-            self.send_response(302)
-            self.send_header("Location", "/")
+            body = (
+                b"<!DOCTYPE html><html><head><title>Link Expired</title>"
+                b"<style>body{font-family:sans-serif;max-width:480px;margin:4rem auto;padding:0 1rem}"
+                b"h1{color:#c0392b}p{color:#555}</style></head><body>"
+                b"<h1>Link Expired</h1>"
+                b"<p>This desktop link has expired or is invalid.</p>"
+                b"<p>Connect via SSH and run <code>novnc-desktop-url</code> to generate a new link.</p>"
+                b"</body></html>"
+            )
+            self.send_response(401)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
+            self.wfile.write(body)
             return
 
         proto = self.headers.get("X-Forwarded-Proto", "https")

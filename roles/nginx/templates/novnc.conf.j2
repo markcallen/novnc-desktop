@@ -55,6 +55,14 @@ server {
     deny all;
   }
 
+  # Redirect bare root to the noVNC page so authenticated users who land on /
+  # (e.g. from an old bookmark) get the desktop rather than a directory listing.
+  location = / {
+    auth_request /_auth/verify;
+    error_page 401 = @unauthorized;
+    return 302 /vnc.html?autoconnect=1&resize=remote;
+  }
+
   # Protected: noVNC static files and WebSocket proxy.
   # auth_request_set captures the per-user websockify backend from the
   # X-VNC-Backend response header returned by /verify (e.g. 127.0.0.1:6081).
