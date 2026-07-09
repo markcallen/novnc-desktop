@@ -10,8 +10,8 @@
   ansible.builtin.fail:
     msg: >-
       Google Chrome is only available for x86_64 hosts.
-      This host is {{ ansible_architecture }}.
-  when: ansible_architecture != "x86_64"
+      This host is {{ ansible_facts['architecture'] }}.
+  when: ansible_facts['architecture'] != "x86_64"
 
 - name: Install base desktop packages
   ansible.builtin.apt:

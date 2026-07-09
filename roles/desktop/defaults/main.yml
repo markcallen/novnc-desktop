@@ -4,7 +4,7 @@
 desktop_type: openbox
 
 # User that owns the desktop session.
-vnc_user: "{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'root' }}"
+vnc_user: "{{ 'ubuntu' if ansible_facts['distribution'] == 'Ubuntu' else 'root' }}"
 
 # Display resolution.
 vnc_geometry: '1280x720'
