@@ -46,7 +46,8 @@ set -e
 #   AMI_NAME_PREFIX=my-novnc AMI_PUBLIC=true ./scripts/build-ami.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
 DRY_RUN=false
 
