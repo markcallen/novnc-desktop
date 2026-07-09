@@ -144,6 +144,10 @@ test.describe('services', () => {
         'grep -Fxq "x-scheme-handler/https=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
         'grep -Fxq "x-scheme-handler/about=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
         'grep -Fxq "x-scheme-handler/unknown=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
+        'test -f "$home/.config/google-chrome/First Run" && ' +
+        'grep -Fq \'"check_default_browser": false\' "$home/.config/google-chrome/Default/Preferences" && ' +
+        'grep -Fq \'"skip_first_run_ui": true\' "$home/.config/google-chrome/Default/Preferences" && ' +
+        'grep -Fq \'"DefaultBrowserSettingEnabled": false\' /etc/opt/chrome/policies/managed/novnc-desktop.json && ' +
         'echo ok'
     );
     expect(
@@ -151,4 +155,42 @@ test.describe('services', () => {
       'Google Chrome is not configured as the default browser'
     ).toBe('ok');
   });
+
+  test('xdg-open launches Google Chrome from a terminal without default browser prompt', async () => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-02' });
+
+    ssh(
+      'pkill -x chrome || true; ' +
+        'pkill -x google-chrome || true; ' +
+        'pkill -x google-chrome-stable || true'
+    );
+    ssh(
+      'rm -f /tmp/novnc-xdg-open-smoke.log && ' +
+        'DISPLAY=:1 xterm -title XDG_OPEN_SMOKE -e sh -lc ' +
+        '\'xdg-open "https://www.google.com" > /tmp/novnc-xdg-open-smoke.log 2>&1; sleep 10\' >/dev/null 2>&1 &'
+    );
+
+    await awaitExpectChromeWindow();
+  });
 });
+
+async function awaitExpectChromeWindow(): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        ssh(
+          'DISPLAY=:1 wmctrl -lx 2>/dev/null | ' +
+            "awk 'BEGIN { chrome=0; prompt=0 } " +
+            'tolower($0) ~ /google-chrome/ { chrome=1 } ' +
+            'tolower($0) ~ /(default browser|set as default|make.*default)/ { prompt=1 } ' +
+            'END { if (prompt) print "prompt"; else if (chrome) print "chrome"; else print "missing" }\''
+        ),
+      {
+        intervals: [1000, 2000, 2000, 3000, 3000],
+        timeout: 30_000
+      }
+    )
+    .toBe('chrome');
+}
