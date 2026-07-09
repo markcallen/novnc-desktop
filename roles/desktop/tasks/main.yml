@@ -71,6 +71,14 @@
     group: '{{ vnc_user }}'
     mode: '0644'
 
+- name: Create Google Chrome config directory
+  ansible.builtin.file:
+    path: '{{ desktop_vnc_home }}/.config/google-chrome'
+    state: directory
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
+
 - name: Create Google Chrome profile directory
   ansible.builtin.file:
     path: '{{ desktop_vnc_home }}/.config/google-chrome/Default'

@@ -124,7 +124,7 @@ e2e:
 	  needs_teardown=1; \
 	  pnpm infra:up; \
 	  pnpm provision:$$variant; \
-	  pnpm test; \
+	  pnpm test -- --workers=1; \
 	  cleanup; \
 	done
 
@@ -148,6 +148,6 @@ e2e-ami:
 	  echo "==> Running AMI E2E smoke tests for $$variant"; \
 	  needs_teardown=1; \
 	  pnpm infra:ami --variant "$$variant"; \
-	  pnpm test; \
+	  pnpm test -- --workers=1; \
 	  cleanup; \
 	done
