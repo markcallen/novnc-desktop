@@ -45,10 +45,30 @@
     name: google-chrome-stable
     state: present
 
+- name: Set VNC home directory
+  ansible.builtin.set_fact:
+    desktop_vnc_home: "{{ '/root' if vnc_user == 'root' else '/home/' + vnc_user }}"
+
 - name: Set Google Chrome as default browser
   community.general.alternatives:
     name: x-www-browser
     path: /usr/bin/google-chrome-stable
+
+- name: Create user config directory
+  ansible.builtin.file:
+    path: '{{ desktop_vnc_home }}/.config'
+    state: directory
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
+
+- name: Set Google Chrome as default desktop browser
+  ansible.builtin.template:
+    src: mimeapps.list.j2
+    dest: '{{ desktop_vnc_home }}/.config/mimeapps.list'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
 
 - name: Warn when VNC session is configured to run as root
   ansible.builtin.debug:
