@@ -38,6 +38,7 @@
       geometry={{ vnc_geometry }}
       depth={{ vnc_depth }}
       SecurityTypes=None
+      IdleTimeout={{ vnc_idle_timeout }}
   notify: Reload systemd
 
 - name: Flush handlers
