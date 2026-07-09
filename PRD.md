@@ -103,6 +103,7 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | FR-5.4 | **Elementary (Pantheon)**: when `gala` crashes during VNC session startup or while the session remains active under software rendering, the session automatically restarts `gala` without requiring a TigerVNC service restart. |
 | FR-5.5 | **Elementary (Pantheon)**: when `smoke_test_marker_enabled=true`, the `SMOKE_READY` xterm is raised and focused after session startup so keyboard input works immediately through noVNC.                                        |
 | FR-5.6 | **Elementary (Pantheon)**: the Pantheon shell override used to suppress focus-stealing components is deployed only when `smoke_test_marker_enabled=true` so non-smoke sessions keep the default shell layout.                   |
+| FR-5.7 | For all desktop types, Google Chrome is installed and configured as the default browser for both system browser alternatives and the VNC user's XDG desktop URL/MIME handlers.                                                  |
 
 ### FR-6 — `novnc-auth` service
 
@@ -193,9 +194,10 @@ To find the test that covers an AC, search the codebase for the AC ID string
 
 ### Desktop rendering
 
-| ID            | Requirement covered | Observable outcome                                            |
-| ------------- | ------------------- | ------------------------------------------------------------- |
-| AC-DESKTOP-01 | FR-5.1, FR-5.2      | VNC canvas renders the desktop; smoke marker xterm is visible |
+| ID            | Requirement covered | Observable outcome                                                                     |
+| ------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| AC-DESKTOP-01 | FR-5.1, FR-5.2      | VNC canvas renders the desktop; smoke marker xterm is visible                          |
+| AC-DESKTOP-02 | FR-5.7              | Google Chrome is configured as the system and desktop default browser for the VNC user |
 
 ### Elementary (Pantheon) — verified only when `desktopType=elementary`
 

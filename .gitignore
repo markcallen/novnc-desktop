@@ -3,6 +3,9 @@
 hosts.ini
 .ansible/
 
+# Python
+__pycache__/
+
 # macOS
 .DS_Store
 

@@ -9,6 +9,7 @@
  * Acceptance Criteria covered:
  *   AC-ANSIBLE-01, AC-ANSIBLE-02, AC-ANSIBLE-03  (direct Ansible path)
  *   AC-AMI-02, AC-AMI-03, AC-AMI-04              (AMI launch path)
+ *   AC-DESKTOP-02                                (browser defaults)
  */
 
 import { test, expect } from '@playwright/test';
@@ -126,5 +127,28 @@ test.describe('services', () => {
       'systemctl is-active novnc-desktop.service 2>/dev/null || echo inactive'
     );
     expect(result, 'novnc-desktop.service is not active').toBe('active');
+  });
+
+  test('Google Chrome is the default browser', () => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-02' });
+
+    const result = ssh(
+      'home="$(getent passwd "$(id -un)" | cut -d: -f6)" && ' +
+        'test "$(update-alternatives --query x-www-browser | awk \'/^Value: / {print $2}\')" = /usr/bin/google-chrome-stable && ' +
+        'test -f "$home/.config/mimeapps.list" && ' +
+        'grep -Fxq "text/html=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
+        'grep -Fxq "application/xhtml+xml=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
+        'grep -Fxq "x-scheme-handler/http=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
+        'grep -Fxq "x-scheme-handler/https=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
+        'grep -Fxq "x-scheme-handler/about=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
+        'grep -Fxq "x-scheme-handler/unknown=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
+        'echo ok'
+    );
+    expect(
+      result,
+      'Google Chrome is not configured as the default browser'
+    ).toBe('ok');
   });
 });
