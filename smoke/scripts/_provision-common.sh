@@ -17,6 +17,9 @@
 
 set -euo pipefail
 
+export LANG="${NOVNC_ANSIBLE_LOCALE:-en_US.utf8}"
+export LC_ALL="${NOVNC_ANSIBLE_LOCALE:-en_US.utf8}"
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_DIR="$REPO_ROOT/.smoke-state"
 STATE_FILE="$STATE_DIR/state.json"
