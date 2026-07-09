@@ -120,7 +120,13 @@
     rule: allow
     port: '{{ item }}'
     proto: tcp
-  loop: '{{ [novnc_http_port | int, novnc_https_port | int] | unique }}'
+  loop: >-
+    {{
+      [
+        novnc_http_port | default(80) | int,
+        novnc_https_port | default(443) | int
+      ] | unique
+    }}
 
 - name: Enable UFW
   community.general.ufw:
