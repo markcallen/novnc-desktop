@@ -228,6 +228,8 @@ build {
       "ANSIBLE_HOST_KEY_CHECKING=False",
       "ANSIBLE_ROLES_PATH=${path.root}/roles",
       "ANSIBLE_COLLECTIONS_PATH=/tmp/novnc-collections-openbox",
+      "LANG=en_US.utf8",
+      "LC_ALL=en_US.utf8",
     ]
   }
 
@@ -244,6 +246,8 @@ build {
       "ANSIBLE_HOST_KEY_CHECKING=False",
       "ANSIBLE_ROLES_PATH=${path.root}/roles",
       "ANSIBLE_COLLECTIONS_PATH=/tmp/novnc-collections-elementary",
+      "LANG=en_US.utf8",
+      "LC_ALL=en_US.utf8",
     ]
   }
 
