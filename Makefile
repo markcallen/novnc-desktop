@@ -14,9 +14,13 @@ NVM_DIR ?= $(HOME)/.nvm
 .PHONY: setup setup-check setup-node setup-pnpm \
         setup-terraform setup-packer setup-deps setup-playwright setup-galaxy
 
-.PHONY: e2e e2e-ami
+.PHONY: e2e e2e-ami publish list-amis
 
 E2E_VARIANTS := openbox elementary
+AMI_NAME_PREFIX ?= novnc-desktop-ubuntu-24.04
+PUBLIC_LIMIT ?= 4
+PUBLISH_ARGS ?= --public
+REGIONS ?= us-east-1 us-east-2 us-west-2
 
 # ---------------------------------------------------------------------------
 # setup — install and configure all required tools
@@ -104,6 +108,45 @@ setup-playwright:
 setup-galaxy:
 	@echo "==> Installing Ansible Galaxy requirements..."
 	ansible-galaxy install -r requirements.yml --force
+
+# ---------------------------------------------------------------------------
+# publish — build public AMIs across regions
+# ---------------------------------------------------------------------------
+publish:
+	@echo "==> Publishing AMIs"
+	@echo "    Regions: $(REGIONS)"
+	REGIONS="$(REGIONS)" \
+	AMI_NAME_PREFIX="$(AMI_NAME_PREFIX)" \
+	PUBLIC_LIMIT="$(PUBLIC_LIMIT)" \
+	bash scripts/build-ami-multi-region.sh $(PUBLISH_ARGS)
+
+# ---------------------------------------------------------------------------
+# list-amis — list owned novnc-desktop AMIs across all enabled US regions
+# ---------------------------------------------------------------------------
+list-amis:
+	@set -euo pipefail; \
+	regions=$$(aws ec2 describe-regions \
+	  --region us-east-1 \
+	  --all-regions \
+	  --filters "Name=opt-in-status,Values=opt-in-not-required,opted-in" \
+	  --query 'Regions[?starts_with(RegionName, `us-`)].RegionName' \
+	  --output text | tr '\t' '\n' | sort); \
+	if [[ -z "$$regions" ]]; then \
+	  echo "ERROR: no enabled US regions found"; \
+	  exit 1; \
+	fi; \
+	for region in $$regions; do \
+	  echo ""; \
+	  echo "==> $$region"; \
+	  aws ec2 describe-images \
+	    --region "$$region" \
+	    --owners self \
+	    --filters \
+	      "Name=tag:Project,Values=novnc-desktop" \
+	      "Name=state,Values=available" \
+	    --query 'sort_by(Images,&CreationDate)[].{Created:CreationDate,ImageId:ImageId,Name:Name,Environment:Tags[?Key==`Environment`]|[0].Value,Variant:Tags[?Key==`Variant`]|[0].Value,Public:Public}' \
+	    --output table; \
+	done
 
 # ---------------------------------------------------------------------------
 # e2e — run direct-provision smoke tests for each desktop variant

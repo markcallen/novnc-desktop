@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Build noVNC AMIs across a fixed region set, using one primary-region build
-# with AMI copies to the additional regions.
+# Build noVNC AMIs across a region set, using one primary-region build with
+# AMI copies to the additional regions.
 #
-# Regions: us-east-1, us-east-2, us-west-2
+# Default regions: us-east-1, us-east-2, us-west-2
 #
 # Modes:
 #   --public  Build public AMIs, but fail when a region has >=4 matching public AMIs.
@@ -12,6 +12,10 @@
 #   AMI_NAME_PREFIX   (default: novnc-desktop-ubuntu-24.04)
 #   PUBLIC_LIMIT      (default: 4)
 #   AMI_ENVIRONMENT   (default: production for --public, test for --private)
+#   REGIONS           Space or comma separated target regions.
+#                     The first region is used as the primary build region
+#                     unless PRIMARY_REGION is set explicitly.
+#   PRIMARY_REGION    Region where Packer builds before copying to other regions.
 #   and any vars consumed by packer.pkr.hcl (INSTANCE_TYPE, NOVNC_HTTP_PORT, NOVNC_HTTPS_PORT, etc.)
 
 set -euo pipefail
@@ -19,12 +23,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PACKER_TEMPLATE="$REPO_ROOT/packer.pkr.hcl"
-PRIMARY_REGION="us-east-1"
-REGIONS=("us-east-1" "us-east-2" "us-west-2")
+DEFAULT_REGIONS="us-east-1 us-east-2 us-west-2"
+REGION_INPUT="${REGIONS:-$DEFAULT_REGIONS}"
 AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-novnc-desktop-ubuntu-24.04}"
 PUBLIC_LIMIT="${PUBLIC_LIMIT:-4}"
 MODE="public"
 DRY_RUN="false"
+
+export LANG="${NOVNC_ANSIBLE_LOCALE:-en_US.utf8}"
+export LC_ALL="${NOVNC_ANSIBLE_LOCALE:-en_US.utf8}"
+export ANSIBLE_LOCAL_TEMP="${ANSIBLE_LOCAL_TEMP:-/tmp/novnc-ansible-local}"
 
 usage() {
   cat <<'USAGE'
@@ -35,6 +43,11 @@ Options:
   --private   Build private AMIs in all regions.
   --dry-run   Print what would run without building.
   --help      Show this help.
+
+Environment:
+  REGIONS="us-east-1 us-east-2 us-west-2"
+  REGIONS="us-east-1,us-east-2,us-west-2"
+  PRIMARY_REGION="us-east-1"
 USAGE
 }
 
@@ -71,6 +84,28 @@ fi
 
 if ! [[ "$PUBLIC_LIMIT" =~ ^[0-9]+$ ]]; then
   echo "ERROR: PUBLIC_LIMIT must be a non-negative integer (got: $PUBLIC_LIMIT)" >&2
+  exit 1
+fi
+
+REGION_INPUT="${REGION_INPUT//,/ }"
+read -r -a BUILD_REGIONS <<< "$REGION_INPUT"
+
+if (( ${#BUILD_REGIONS[@]} == 0 )); then
+  echo "ERROR: REGIONS must include at least one AWS region." >&2
+  exit 1
+fi
+
+PRIMARY_REGION="${PRIMARY_REGION:-${BUILD_REGIONS[0]}}"
+primary_region_included="false"
+for region in "${BUILD_REGIONS[@]}"; do
+  if [[ "$region" == "$PRIMARY_REGION" ]]; then
+    primary_region_included="true"
+    break
+  fi
+done
+
+if [[ "$primary_region_included" != "true" ]]; then
+  echo "ERROR: PRIMARY_REGION ($PRIMARY_REGION) must be included in REGIONS: ${BUILD_REGIONS[*]}" >&2
   exit 1
 fi
 
@@ -128,26 +163,31 @@ count_matching_public_amis() {
     --output text
 }
 
-for region in "${REGIONS[@]}"; do
+for region in "${BUILD_REGIONS[@]}"; do
   echo ""
   echo "=== Region: $region ==="
 
   if [[ "$MODE" == "public" ]]; then
-    check_ami_public_access_block "$region"
-    public_count="$(count_matching_public_amis "$region")"
-    echo "Public AMIs matching prefix '${AMI_NAME_PREFIX}-*': $public_count"
+    if [[ "$DRY_RUN" == "true" ]]; then
+      echo "Dry run: would check AMI block public access state in $region."
+      echo "Dry run: would check matching public AMI count in $region."
+    else
+      check_ami_public_access_block "$region"
+      public_count="$(count_matching_public_amis "$region")"
+      echo "Public AMIs matching prefix '${AMI_NAME_PREFIX}-*': $public_count"
 
-    if (( public_count >= PUBLIC_LIMIT )); then
-      echo "ERROR: $region already has ${public_count} matching public AMIs (limit=${PUBLIC_LIMIT})." >&2
-      echo "Run the AMI cleanup script, then retry this command." >&2
-      exit 1
+      if (( public_count >= PUBLIC_LIMIT )); then
+        echo "ERROR: $region already has ${public_count} matching public AMIs (limit=${PUBLIC_LIMIT})." >&2
+        echo "Run the AMI cleanup script, then retry this command." >&2
+        exit 1
+      fi
     fi
   fi
 
 done
 
 TARGET_REGIONS=()
-for region in "${REGIONS[@]}"; do
+for region in "${BUILD_REGIONS[@]}"; do
   if [[ "$region" != "$PRIMARY_REGION" ]]; then
     TARGET_REGIONS+=("\"$region\"")
   fi
@@ -179,6 +219,7 @@ PACKER_CMD=(
 
 echo ""
 echo "Primary build region: $PRIMARY_REGION"
+echo "Regions:              ${BUILD_REGIONS[*]}"
 echo "Copy target regions:  ${TARGET_REGIONS[*]//\"/}"
 echo "Mode:                 $MODE"
 echo "Public:               $AMI_PUBLIC_VALUE"
