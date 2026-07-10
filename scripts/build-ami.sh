@@ -187,10 +187,12 @@ check_public_ami_quota_room() {
 
     if ! public_count="$(count_public_amis "$region" 2>&1)"; then
         aws_error="$public_count"
-        echo "ERROR: Unable to count existing public AMIs in region '$region'."
-        echo "AWS CLI output:"
-        echo "$aws_error"
-        echo "Verify AWS credentials and permissions (ec2:DescribeImages)."
+        {
+            echo "ERROR: Unable to count existing public AMIs in region '$region'."
+            echo "AWS CLI output:"
+            echo "$aws_error"
+            echo "Verify AWS credentials and permissions (ec2:DescribeImages)."
+        } >&2
         exit 1
     fi
 
@@ -205,22 +207,24 @@ check_public_ami_quota_room() {
     echo "Public AMIs this build would create: $planned_public_amis"
 
     if (( remaining < planned_public_amis )); then
-        echo ""
-        echo "ERROR: Not enough public AMI quota remains in region '$region'."
-        echo "Current public AMIs: $public_count"
-        echo "Configured public AMI limit: $PUBLIC_AMI_LIMIT"
-        echo "Remaining slots: $remaining"
-        echo "Required slots for this build: $planned_public_amis"
-        echo ""
-        echo "Clean up unused public AMIs first:"
-        echo "  ./scripts/cleanup-amis.sh --environment production --keep 1 --dry-run"
-        echo "  ./scripts/cleanup-amis.sh --environment production --keep 1 --yes"
-        echo ""
-        echo "Or build private AMIs by setting:"
-        echo "  AMI_PUBLIC=false"
-        echo ""
-        echo "If AWS has raised your quota, set:"
-        echo "  PUBLIC_AMI_LIMIT=<new-limit>"
+        {
+            echo ""
+            echo "ERROR: Not enough public AMI quota remains in region '$region'."
+            echo "Current public AMIs: $public_count"
+            echo "Configured public AMI limit: $PUBLIC_AMI_LIMIT"
+            echo "Remaining slots: $remaining"
+            echo "Required slots for this build: $planned_public_amis"
+            echo ""
+            echo "Clean up unused public AMIs first:"
+            echo "  ./scripts/cleanup-amis.sh --environment production --keep 1 --dry-run"
+            echo "  ./scripts/cleanup-amis.sh --environment production --keep 1 --yes"
+            echo ""
+            echo "Or build private AMIs by setting:"
+            echo "  AMI_PUBLIC=false"
+            echo ""
+            echo "If AWS has raised your quota, set:"
+            echo "  PUBLIC_AMI_LIMIT=<new-limit>"
+        } >&2
         exit 1
     fi
 }
