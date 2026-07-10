@@ -13,6 +13,8 @@ set -e
 #                      private AMIs where the domain is known at build time
 #                      (default: false — recommended for public AMIs)
 #   AMI_PUBLIC       — Make the resulting AMIs publicly launchable (default: false)
+#   PUBLIC_AMI_LIMIT — Account public AMI quota for the target region
+#                      (default: 5; set higher if AWS quota has been increased)
 #   AMI_ENVIRONMENT  — Value for the Environment tag; use 'test' (default) so
 #                      smoke/scripts/infra-ami.sh can discover the AMI, or
 #                      'production' for public release builds
@@ -90,6 +92,7 @@ INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
 AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-${AMI_NAME:-novnc-desktop-ubuntu-24.04}}"
 USE_CERTBOT="${USE_CERTBOT:-false}"
 AMI_PUBLIC="${AMI_PUBLIC:-false}"
+PUBLIC_AMI_LIMIT="${PUBLIC_AMI_LIMIT:-5}"
 AMI_ENVIRONMENT="${AMI_ENVIRONMENT:-test}"
 NOVNC_HTTP_PORT="${NOVNC_HTTP_PORT:-80}"
 NOVNC_HTTPS_PORT="${NOVNC_HTTPS_PORT:-443}"
@@ -105,6 +108,7 @@ echo "AMI Name Prefix: $AMI_NAME_PREFIX"
 echo "Variants:      openbox, elementary"
 echo "Use Certbot:   $USE_CERTBOT"
 echo "Public AMI:    $AMI_PUBLIC"
+echo "Public AMI Limit: $PUBLIC_AMI_LIMIT"
 echo "Environment:   $AMI_ENVIRONMENT"
 echo "Git SHA:       $GIT_SHA"
 echo "App Version:   $APP_VERSION"
@@ -159,6 +163,72 @@ check_ami_public_access_block() {
     fi
 }
 
+count_public_amis() {
+    local region="$1"
+
+    aws ec2 describe-images \
+        --region "$region" \
+        --owners self \
+        --query 'length(Images[?Public==`true`])' \
+        --output text
+}
+
+check_public_ami_quota_room() {
+    local region="$1"
+    local planned_public_amis="$2"
+    local public_count
+    local remaining
+    local aws_error
+
+    if ! [[ "$PUBLIC_AMI_LIMIT" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: PUBLIC_AMI_LIMIT must be a non-negative integer. Got: $PUBLIC_AMI_LIMIT" >&2
+        exit 1
+    fi
+
+    if ! public_count="$(count_public_amis "$region" 2>&1)"; then
+        aws_error="$public_count"
+        {
+            echo "ERROR: Unable to count existing public AMIs in region '$region'."
+            echo "AWS CLI output:"
+            echo "$aws_error"
+            echo "Verify AWS credentials and permissions (ec2:DescribeImages)."
+        } >&2
+        exit 1
+    fi
+
+    if ! [[ "$public_count" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: Unexpected public AMI count from AWS: $public_count" >&2
+        exit 1
+    fi
+
+    remaining=$(( PUBLIC_AMI_LIMIT - public_count ))
+
+    echo "Public AMIs in $region: $public_count / $PUBLIC_AMI_LIMIT"
+    echo "Public AMIs this build would create: $planned_public_amis"
+
+    if (( remaining < planned_public_amis )); then
+        {
+            echo ""
+            echo "ERROR: Not enough public AMI quota remains in region '$region'."
+            echo "Current public AMIs: $public_count"
+            echo "Configured public AMI limit: $PUBLIC_AMI_LIMIT"
+            echo "Remaining slots: $remaining"
+            echo "Required slots for this build: $planned_public_amis"
+            echo ""
+            echo "Clean up unused public AMIs first:"
+            echo "  ./scripts/cleanup-amis.sh --environment production --keep 1 --dry-run"
+            echo "  ./scripts/cleanup-amis.sh --environment production --keep 1 --yes"
+            echo ""
+            echo "Or build private AMIs by setting:"
+            echo "  AMI_PUBLIC=false"
+            echo ""
+            echo "If AWS has raised your quota, set:"
+            echo "  PUBLIC_AMI_LIMIT=<new-limit>"
+        } >&2
+        exit 1
+    fi
+}
+
 # Check if Packer is installed
 if ! command -v packer &> /dev/null; then
     echo "ERROR: Packer is not installed. Please install Packer first."
@@ -169,9 +239,12 @@ fi
 if [[ "$AMI_PUBLIC" == "true" ]]; then
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "Dry run: would check AMI block public access state in region '$AWS_REGION'."
+        echo "Dry run: would check public AMI quota room for 2 new public AMIs in region '$AWS_REGION'."
     else
         echo "Checking AMI block public access state..."
         check_ami_public_access_block "$AWS_REGION"
+        echo "Checking public AMI quota room..."
+        check_public_ami_quota_room "$AWS_REGION" 2
     fi
 fi
 
