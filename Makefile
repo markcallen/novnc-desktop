@@ -21,6 +21,7 @@ AMI_NAME_PREFIX ?= novnc-desktop-ubuntu-24.04
 PUBLIC_LIMIT ?= 4
 PUBLISH_ARGS ?= --public
 REGIONS ?= us-east-1 us-east-2 us-west-2
+PRIMARY_REGION ?=
 
 # ---------------------------------------------------------------------------
 # setup — install and configure all required tools
@@ -116,6 +117,7 @@ publish:
 	@echo "==> Publishing AMIs"
 	@echo "    Regions: $(REGIONS)"
 	REGIONS="$(REGIONS)" \
+	PRIMARY_REGION="$(PRIMARY_REGION)" \
 	AMI_NAME_PREFIX="$(AMI_NAME_PREFIX)" \
 	PUBLIC_LIMIT="$(PUBLIC_LIMIT)" \
 	bash scripts/build-ami-multi-region.sh $(PUBLISH_ARGS)

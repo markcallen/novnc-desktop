@@ -16,6 +16,10 @@
 #                     The first region is used as the primary build region
 #                     unless PRIMARY_REGION is set explicitly.
 #   PRIMARY_REGION    Region where Packer builds before copying to other regions.
+#   NOVNC_ANSIBLE_LOCALE
+#                     Locale exported as LANG and LC_ALL (default: en_US.utf8).
+#   ANSIBLE_LOCAL_TEMP
+#                     Local temp directory for Ansible (default: /tmp/novnc-ansible-local).
 #   and any vars consumed by packer.pkr.hcl (INSTANCE_TYPE, NOVNC_HTTP_PORT, NOVNC_HTTPS_PORT, etc.)
 
 set -euo pipefail
@@ -48,6 +52,8 @@ Environment:
   REGIONS="us-east-1 us-east-2 us-west-2"
   REGIONS="us-east-1,us-east-2,us-west-2"
   PRIMARY_REGION="us-east-1"
+  NOVNC_ANSIBLE_LOCALE="en_US.utf8"
+  ANSIBLE_LOCAL_TEMP="/tmp/novnc-ansible-local"
 USAGE
 }
 
