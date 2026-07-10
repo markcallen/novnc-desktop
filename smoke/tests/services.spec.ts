@@ -134,7 +134,7 @@ test.describe('services', () => {
       .info()
       .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-02' });
 
-    const result = ssh(
+    const defaultBrowserResult = ssh(
       'home="$(getent passwd "$(id -un)" | cut -d: -f6)" && ' +
         'test "$(update-alternatives --query x-www-browser | awk \'/^Value: / {print $2}\')" = /usr/bin/google-chrome-stable && ' +
         'test -f "$home/.config/mimeapps.list" && ' +
@@ -145,15 +145,31 @@ test.describe('services', () => {
         'grep -Fxq "x-scheme-handler/about=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
         'grep -Fxq "x-scheme-handler/unknown=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
         'test -f "$home/.config/google-chrome/First Run" && ' +
-        'grep -Fq \'"check_default_browser": false\' "$home/.config/google-chrome/Default/Preferences" && ' +
-        'grep -Fq \'"skip_first_run_ui": true\' "$home/.config/google-chrome/Default/Preferences" && ' +
-        'grep -Fq \'"DefaultBrowserSettingEnabled": false\' /etc/opt/chrome/policies/managed/novnc-desktop.json && ' +
         'echo ok'
     );
     expect(
-      result,
+      defaultBrowserResult,
       'Google Chrome is not configured as the default browser'
     ).toBe('ok');
+
+    const preferences = JSON.parse(
+      ssh(
+        'home="$(getent passwd "$(id -un)" | cut -d: -f6)" && ' +
+          'cat "$home/.config/google-chrome/Default/Preferences"'
+      )
+    ) as {
+      browser?: { check_default_browser?: unknown };
+      distribution?: { skip_first_run_ui?: unknown };
+    };
+
+    expect(preferences.browser?.check_default_browser).toBe(false);
+    expect(preferences.distribution?.skip_first_run_ui).toBe(true);
+
+    const managedPolicies = JSON.parse(
+      ssh('cat /etc/opt/chrome/policies/managed/novnc-desktop.json')
+    ) as { DefaultBrowserSettingEnabled?: unknown };
+
+    expect(managedPolicies.DefaultBrowserSettingEnabled).toBe(false);
   });
 
   test('xdg-open launches Google Chrome from a terminal without default browser prompt', async () => {
