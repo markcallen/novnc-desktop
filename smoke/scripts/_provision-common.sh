@@ -10,6 +10,7 @@
 #   VNC_USER       — SSH username on the EC2 instance (default: ubuntu)
 #   NOVNC_HTTP_PORT  — public HTTP port passed to the role (default: 80)
 #   NOVNC_HTTPS_PORT — public HTTPS port passed to the role (default: 443)
+#   NOVNC_ANSIBLE_LOCALE — locale exported for Ansible commands (default: en_US.utf8)
 #
 # When state.json contains tlsDomain (written by infra-up-tls.sh), Ansible is
 # invoked with use_certbot=true and letsencrypt_email so certbot obtains a

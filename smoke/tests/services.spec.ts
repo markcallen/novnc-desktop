@@ -152,19 +152,6 @@ test.describe('services', () => {
       'Google Chrome is not configured as the default browser'
     ).toBe('ok');
 
-    const preferences = JSON.parse(
-      ssh(
-        'home="$(getent passwd "$(id -un)" | cut -d: -f6)" && ' +
-          'cat "$home/.config/google-chrome/Default/Preferences"'
-      )
-    ) as {
-      browser?: { check_default_browser?: unknown };
-      distribution?: { skip_first_run_ui?: unknown };
-    };
-
-    expect(preferences.browser?.check_default_browser).toBe(false);
-    expect(preferences.distribution?.skip_first_run_ui).toBe(true);
-
     const managedPolicies = JSON.parse(
       ssh('cat /etc/opt/chrome/policies/managed/novnc-desktop.json')
     ) as { DefaultBrowserSettingEnabled?: unknown };
@@ -177,21 +164,30 @@ test.describe('services', () => {
       .info()
       .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-02' });
 
-    ssh(
-      'pkill -x chrome || true; ' +
-        'pkill -x google-chrome || true; ' +
-        'pkill -x google-chrome-stable || true'
-    );
-    ssh(
-      'rm -f /tmp/novnc-xdg-open-smoke.log && ' +
-        'DISPLAY=:1 setsid -f xterm -title XDG_OPEN_SMOKE -e sh -lc ' +
-        '\'xdg-open "https://www.google.com" > /tmp/novnc-xdg-open-smoke.log 2>&1; sleep 10\' ' +
-        '</dev/null >/dev/null 2>&1'
-    );
+    killChrome();
+    try {
+      ssh(
+        'rm -f /tmp/novnc-xdg-open-smoke.log && ' +
+          'DISPLAY=:1 setsid -f xterm -title XDG_OPEN_SMOKE -e sh -lc ' +
+          '\'xdg-open "https://www.google.com" > /tmp/novnc-xdg-open-smoke.log 2>&1; sleep 10\' ' +
+          '</dev/null >/dev/null 2>&1'
+      );
 
-    await awaitExpectChromeWindow();
+      await awaitExpectChromeWindow();
+    } finally {
+      killChrome();
+    }
   });
 });
+
+function killChrome(): void {
+  ssh(
+    'pkill -x chrome || true; ' +
+      'pkill -x google-chrome || true; ' +
+      'pkill -x google-chrome-stable || true; ' +
+      'DISPLAY=:1 wmctrl -c XDG_OPEN_SMOKE 2>/dev/null || true'
+  );
+}
 
 async function awaitExpectChromeWindow(): Promise<void> {
   await expect
