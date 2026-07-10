@@ -95,15 +95,15 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 
 ### FR-5 — Desktop environments
 
-| ID     | Requirement                                                                                                                                                                                                                     |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-5.1 | **Openbox**: installs `openbox`, `tint2`, and `xterm`. Fully supported on Ubuntu 24.04 from main repos.                                                                                                                         |
-| FR-5.2 | **Elementary (Pantheon)**: installs from `ppa:elementary-os/stable`. Treated as best-effort; if the PPA does not support the host's Ubuntu release the task warns and continues rather than failing the playbook.               |
-| FR-5.3 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                                       |
-| FR-5.4 | **Elementary (Pantheon)**: when `gala` crashes during VNC session startup or while the session remains active under software rendering, the session automatically restarts `gala` without requiring a TigerVNC service restart. |
-| FR-5.5 | **Elementary (Pantheon)**: when `smoke_test_marker_enabled=true`, the `SMOKE_READY` xterm is raised and focused after session startup so keyboard input works immediately through noVNC.                                        |
-| FR-5.6 | **Elementary (Pantheon)**: the Pantheon shell override used to suppress focus-stealing components is deployed only when `smoke_test_marker_enabled=true` so non-smoke sessions keep the default shell layout.                   |
-| FR-5.7 | For all desktop types, Google Chrome is installed and configured as the default browser for both system browser alternatives and the VNC user's XDG desktop URL/MIME handlers.                                                  |
+| ID     | Requirement                                                                                                                                                                                                                                  |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-5.1 | **Openbox**: installs `openbox`, `tint2`, and `xterm`. Fully supported on Ubuntu 24.04 from main repos.                                                                                                                                      |
+| FR-5.2 | **Elementary (Pantheon)**: installs from `ppa:elementary-os/stable`. Treated as best-effort; if the PPA does not support the host's Ubuntu release the task warns and continues rather than failing the playbook.                            |
+| FR-5.3 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                                                    |
+| FR-5.4 | **Elementary (Pantheon)**: when `gala` crashes during VNC session startup or while the session remains active under software rendering, the session automatically restarts `gala` without requiring a TigerVNC service restart.              |
+| FR-5.5 | **Elementary (Pantheon)**: when `smoke_test_marker_enabled=true`, the `SMOKE_READY` xterm is raised and focused after session startup so keyboard input works immediately through noVNC.                                                     |
+| FR-5.6 | **Elementary (Pantheon)**: the Pantheon shell override used to suppress focus-stealing components is deployed only when `smoke_test_marker_enabled=true` so non-smoke sessions keep the default shell layout.                                |
+| FR-5.7 | For all desktop types, Google Chrome is installed and configured as the default browser for both system browser alternatives and the VNC user's XDG desktop URL/MIME handlers. First launch should not show Chrome's default-browser prompt. |
 
 ### FR-6 — `novnc-auth` service
 
@@ -194,10 +194,10 @@ To find the test that covers an AC, search the codebase for the AC ID string
 
 ### Desktop rendering
 
-| ID            | Requirement covered | Observable outcome                                                                     |
-| ------------- | ------------------- | -------------------------------------------------------------------------------------- |
-| AC-DESKTOP-01 | FR-5.1, FR-5.2      | VNC canvas renders the desktop; smoke marker xterm is visible                          |
-| AC-DESKTOP-02 | FR-5.7              | Google Chrome is configured as the system and desktop default browser for the VNC user |
+| ID            | Requirement covered | Observable outcome                                                                                                                                                                        |
+| ------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC-DESKTOP-01 | FR-5.1, FR-5.2      | VNC canvas renders the desktop; smoke marker xterm is visible                                                                                                                             |
+| AC-DESKTOP-02 | FR-5.7              | Google Chrome is configured as the system and desktop default browser for the VNC user; `xdg-open "https://www.google.com"` from a terminal opens Chrome without a default-browser prompt |
 
 ### Elementary (Pantheon) — verified only when `desktopType=elementary`
 

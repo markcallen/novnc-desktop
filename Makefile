@@ -14,6 +14,10 @@ NVM_DIR ?= $(HOME)/.nvm
 .PHONY: setup setup-check setup-node setup-pnpm \
         setup-terraform setup-packer setup-deps setup-playwright setup-galaxy
 
+.PHONY: e2e e2e-ami
+
+E2E_VARIANTS := openbox elementary
+
 # ---------------------------------------------------------------------------
 # setup — install and configure all required tools
 # ---------------------------------------------------------------------------
@@ -100,3 +104,50 @@ setup-playwright:
 setup-galaxy:
 	@echo "==> Installing Ansible Galaxy requirements..."
 	ansible-galaxy install -r requirements.yml --force
+
+# ---------------------------------------------------------------------------
+# e2e — run direct-provision smoke tests for each desktop variant
+# ---------------------------------------------------------------------------
+e2e:
+	@set -euo pipefail; \
+	needs_teardown=0; \
+	cleanup() { \
+	  if [[ "$$needs_teardown" == "1" ]]; then \
+	    echo "==> Tearing down smoke infrastructure..."; \
+	    pnpm infra:down || true; \
+	    needs_teardown=0; \
+	  fi; \
+	}; \
+	trap cleanup EXIT; \
+	for variant in $(E2E_VARIANTS); do \
+	  echo "==> Running direct-provision E2E smoke tests for $$variant"; \
+	  needs_teardown=1; \
+	  pnpm infra:up; \
+	  pnpm provision:$$variant; \
+	  pnpm test --workers=1; \
+	  cleanup; \
+	done
+
+# ---------------------------------------------------------------------------
+# e2e-ami — build AMIs, then launch and smoke-test each AMI variant
+# ---------------------------------------------------------------------------
+e2e-ami:
+	@set -euo pipefail; \
+	needs_teardown=0; \
+	cleanup() { \
+	  if [[ "$$needs_teardown" == "1" ]]; then \
+	    echo "==> Tearing down AMI smoke infrastructure..."; \
+	    pnpm infra:down || true; \
+	    needs_teardown=0; \
+	  fi; \
+	}; \
+	trap cleanup EXIT; \
+	echo "==> Building AMIs for all desktop variants"; \
+	pnpm build:ami; \
+	for variant in $(E2E_VARIANTS); do \
+	  echo "==> Running AMI E2E smoke tests for $$variant"; \
+	  needs_teardown=1; \
+	  pnpm infra:ami --variant "$$variant"; \
+	  pnpm test --workers=1; \
+	  cleanup; \
+	done

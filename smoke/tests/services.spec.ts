@@ -134,7 +134,7 @@ test.describe('services', () => {
       .info()
       .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-02' });
 
-    const result = ssh(
+    const defaultBrowserResult = ssh(
       'home="$(getent passwd "$(id -un)" | cut -d: -f6)" && ' +
         'test "$(update-alternatives --query x-www-browser | awk \'/^Value: / {print $2}\')" = /usr/bin/google-chrome-stable && ' +
         'test -f "$home/.config/mimeapps.list" && ' +
@@ -144,11 +144,66 @@ test.describe('services', () => {
         'grep -Fxq "x-scheme-handler/https=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
         'grep -Fxq "x-scheme-handler/about=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
         'grep -Fxq "x-scheme-handler/unknown=google-chrome.desktop;" "$home/.config/mimeapps.list" && ' +
+        'test -f "$home/.config/google-chrome/First Run" && ' +
         'echo ok'
     );
     expect(
-      result,
+      defaultBrowserResult,
       'Google Chrome is not configured as the default browser'
     ).toBe('ok');
+
+    const managedPolicies = JSON.parse(
+      ssh('cat /etc/opt/chrome/policies/managed/novnc-desktop.json')
+    ) as { DefaultBrowserSettingEnabled?: unknown };
+
+    expect(managedPolicies.DefaultBrowserSettingEnabled).toBe(false);
+  });
+
+  test('xdg-open launches Google Chrome from a terminal without default browser prompt', async () => {
+    test
+      .info()
+      .annotations.push({ type: 'requirement', description: 'AC-DESKTOP-02' });
+
+    killChrome();
+    try {
+      ssh(
+        'rm -f /tmp/novnc-xdg-open-smoke.log && ' +
+          'DISPLAY=:1 setsid -f xterm -title XDG_OPEN_SMOKE -e sh -lc ' +
+          '\'xdg-open "https://www.google.com" > /tmp/novnc-xdg-open-smoke.log 2>&1; sleep 10\' ' +
+          '</dev/null >/dev/null 2>&1'
+      );
+
+      await awaitExpectChromeWindow();
+    } finally {
+      killChrome();
+    }
   });
 });
+
+function killChrome(): void {
+  ssh(
+    'pkill -x chrome || true; ' +
+      'pkill -x google-chrome || true; ' +
+      'pkill -x google-chrome-stable || true; ' +
+      'DISPLAY=:1 wmctrl -c XDG_OPEN_SMOKE 2>/dev/null || true'
+  );
+}
+
+async function awaitExpectChromeWindow(): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        ssh(
+          'DISPLAY=:1 wmctrl -lx 2>/dev/null | ' +
+            "awk 'BEGIN { chrome=0; prompt=0 } " +
+            'tolower($0) ~ /google-chrome/ { chrome=1 } ' +
+            'tolower($0) ~ /(default browser|set as default|make.*default)/ { prompt=1 } ' +
+            'END { if (prompt) print "prompt"; else if (chrome) print "chrome"; else print "missing" }\''
+        ),
+      {
+        intervals: [1000, 2000, 2000, 3000, 3000],
+        timeout: 30_000
+      }
+    )
+    .toBe('chrome');
+}

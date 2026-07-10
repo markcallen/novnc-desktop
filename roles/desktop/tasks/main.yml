@@ -10,8 +10,8 @@
   ansible.builtin.fail:
     msg: >-
       Google Chrome is only available for x86_64 hosts.
-      This host is {{ ansible_architecture }}.
-  when: ansible_architecture != "x86_64"
+      This host is {{ ansible_facts['architecture'] }}.
+  when: ansible_facts['architecture'] != "x86_64"
 
 - name: Install base desktop packages
   ansible.builtin.apt:
@@ -24,6 +24,7 @@
       - ca-certificates
       - curl
       - gpg
+      - wmctrl
     state: present
 
 - name: Install Google Chrome signing key
@@ -68,6 +69,56 @@
     dest: '{{ desktop_vnc_home }}/.config/mimeapps.list'
     owner: '{{ vnc_user }}'
     group: '{{ vnc_user }}'
+    mode: '0644'
+
+- name: Create Google Chrome config directory
+  ansible.builtin.file:
+    path: '{{ desktop_vnc_home }}/.config/google-chrome'
+    state: directory
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
+
+- name: Create Google Chrome profile directory
+  ansible.builtin.file:
+    path: '{{ desktop_vnc_home }}/.config/google-chrome/Default'
+    state: directory
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
+
+- name: Mark Google Chrome first run complete
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/google-chrome/First Run'
+    content: ''
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    force: false
+
+- name: Seed Google Chrome first-run preferences
+  ansible.builtin.template:
+    src: chrome-first-run-preferences.json.j2
+    dest: '{{ desktop_vnc_home }}/.config/google-chrome/Default/Preferences'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    force: false
+
+- name: Create Google Chrome managed policy directory
+  ansible.builtin.file:
+    path: /etc/opt/chrome/policies/managed
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Disable Google Chrome default-browser prompt
+  ansible.builtin.template:
+    src: chrome-managed-policies.json.j2
+    dest: /etc/opt/chrome/policies/managed/novnc-desktop.json
+    owner: root
+    group: root
     mode: '0644'
 
 - name: Warn when VNC session is configured to run as root
