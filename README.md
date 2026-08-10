@@ -221,7 +221,7 @@ Key variables:
 | `novnc_http_port`           | `80`       | Public HTTP port that redirects to HTTPS                                                           |
 | `novnc_https_port`          | `443`      | Public HTTPS port served by nginx                                                                  |
 | `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition on `80/443` only                                     |
-| `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification                                                  |
+| `smoke_test_marker_enabled` | `false`    | Render green terminal marker for canvas verification                                               |
 
 After provisioning, SSH in and run `novnc-desktop-url` to get a signed HTTPS URL for the desktop.
 

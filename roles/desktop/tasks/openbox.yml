@@ -169,6 +169,14 @@
       MiscToolbarDefault=FALSE
       MiscConfirmClose=FALSE
 
+- name: Configure XFCE terminal clipboard shortcuts
+  ansible.builtin.template:
+    src: xfce-terminal-accels.scm.j2
+    dest: '{{ desktop_vnc_home }}/.config/xfce4/terminal/accels.scm'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+
 - name: Create .vnc directory
   ansible.builtin.file:
     path: '{{ desktop_vnc_home }}/.vnc'

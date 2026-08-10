@@ -22,7 +22,7 @@ exec dbus-run-session sh -lc "
   xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVirtual-1/workspace0/color-style -n -t int -s 0 || true
   xfce4-clipman >/dev/null 2>&1 &
 {% if smoke_test_marker_enabled | bool %}
-  (sleep 4; xterm -title SMOKE_READY -geometry 44x8+20+50 -bg '#00ff66' -fg black -e sh -lc \"printf 'SMOKE READY\n'; exec sh\") &
+  (sleep 4; xfce4-terminal --title=SMOKE_READY --geometry=44x8+20+50 --color-bg='#00ff66' --color-text=black --command='sh -lc "printf \"SMOKE READY\n\"; exec sh"') &
 {% endif %}
   exec startxfce4
 "

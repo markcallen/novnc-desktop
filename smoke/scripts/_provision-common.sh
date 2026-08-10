@@ -89,7 +89,7 @@ cd "$REPO_ROOT"
 
 # ---------------------------------------------------------------------------
 # 2. Ansible — provision the desktop
-# smoke_test_marker_enabled=true renders the bright-green xterm that the
+# smoke_test_marker_enabled=true renders the bright-green terminal that the
 # Playwright desktop test looks for on the canvas.
 # When tlsDomain is set (written by infra:up:tls), certbot is enabled and
 # the Let's Encrypt certificate is obtained during provisioning.

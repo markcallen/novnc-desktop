@@ -2,7 +2,7 @@
  * Desktop smoke tests
  *
  * Verifies the full access flow: token URL → auth cookie → noVNC canvas →
- * rendered desktop content (smoke marker xterm).
+ * rendered desktop content (smoke marker terminal).
  *
  * Requires smoke_test_marker_enabled=true on the provisioned host (infra-up.sh
  * sets this automatically).
@@ -65,7 +65,7 @@ test.describe('desktop', () => {
     // Step 2: give VNC a few seconds to render content into the canvas.
     await page.waitForTimeout(5_000);
 
-    // Step 3: sample the canvas for the bright-green smoke marker xterm.
+    // Step 3: sample the canvas for the bright-green smoke marker terminal.
     // The marker is visible when smoke_test_marker_enabled=true (set by infra-up.sh).
     const result = await page.evaluate((): CanvasResult => {
       const canvas = document.querySelector('canvas');

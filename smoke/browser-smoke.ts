@@ -7,7 +7,7 @@
  *   1. Navigate to the access URL — the auth service sets the access cookie
  *      and redirects to vnc.html?autoconnect=1.
  *   2. Wait for the noVNC canvas to become active with rendered content.
- *   3. Verify the green smoke-test marker xterm is visible (when
+ *   3. Verify the green smoke-test marker terminal is visible (when
  *      smoke_test_marker_enabled is true).
  *   4. Take a screenshot.
  */

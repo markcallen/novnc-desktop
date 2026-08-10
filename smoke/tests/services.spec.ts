@@ -168,8 +168,8 @@ test.describe('services', () => {
     try {
       ssh(
         'rm -f /tmp/novnc-xdg-open-smoke.log && ' +
-          'DISPLAY=:1 setsid -f xterm -title XDG_OPEN_SMOKE -e sh -lc ' +
-          '\'xdg-open "https://www.google.com" > /tmp/novnc-xdg-open-smoke.log 2>&1; sleep 10\' ' +
+          'DISPLAY=:1 setsid -f xfce4-terminal --title=XDG_OPEN_SMOKE --command=' +
+          '\'sh -lc "xdg-open \\"https://www.google.com\\" > /tmp/novnc-xdg-open-smoke.log 2>&1; sleep 10"\' ' +
           '</dev/null >/dev/null 2>&1'
       );
 
