@@ -5,7 +5,7 @@
 #   pnpm infra:ami [OPTIONS] [AMI_ID]
 #
 # Options:
-#   --variant <openbox|elementary>   Desktop variant to find (default: openbox)
+#   --variant <openbox>              Desktop variant to find (default: openbox)
 #   --http-port <port>               HTTP port (default: 80)
 #   --https-port <port>              HTTPS port (default: 443)
 #   --domain <zone>                  Parent Route53 zone (e.g. smoke.markcallen.dev)
@@ -20,11 +20,9 @@
 #
 # Examples:
 #   pnpm infra:ami
-#   pnpm infra:ami --variant elementary
 #   pnpm infra:ami --domain smoke.markcallen.dev --public
 #   pnpm infra:ami --domain smoke.markcallen.dev --certbot-email admin@example.com --public
 #   pnpm infra:ami --domain smoke.markcallen.dev --iam-instance-profile novnc-desktop-certbot --public
-#   pnpm infra:ami --variant elementary --http-port 8080 --https-port 8443 --public
 #   pnpm infra:ami ami-0613b782c7ff5544d
 #
 # Optional environment variables:
@@ -98,8 +96,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$VARIANT" != "openbox" && "$VARIANT" != "elementary" ]]; then
-  echo "ERROR: --variant must be 'openbox' or 'elementary'" >&2
+if [[ "$VARIANT" != "openbox" ]]; then
+  echo "ERROR: --variant must be 'openbox'. Elementary remains available for direct Ansible provisioning only." >&2
   exit 1
 fi
 

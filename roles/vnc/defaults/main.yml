@@ -1,6 +1,6 @@
 ---
 vnc_user: ubuntu
 vnc_display: 1
-vnc_geometry: '1280x720'
+vnc_geometry: '1440x900'
 vnc_depth: 24
 vnc_idle_timeout: 600

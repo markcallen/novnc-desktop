@@ -29,7 +29,7 @@ handles the complete TLS setup at launch time:
 
 #### Option 1: EC2 Console
 
-1. Launch an EC2 instance from an openbox or elementary AMI.
+1. Launch an EC2 instance from an openbox AMI.
 2. Under **Advanced Details → User data**, paste:
 
 ```bash

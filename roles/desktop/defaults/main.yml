@@ -7,10 +7,10 @@ desktop_type: openbox
 vnc_user: ubuntu
 
 # Display resolution.
-vnc_geometry: '1280x720'
+vnc_geometry: '1440x900'
 vnc_depth: 24
 
-# Number of virtual desktops (openbox only).
+# Number of virtual desktops used by the openbox-compatible XFCE session.
 openbox_desktops: 1
 
 # Set to true during smoke tests to paint a bright-green xterm on screen

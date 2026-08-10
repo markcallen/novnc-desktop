@@ -2,7 +2,7 @@
 set -e
 
 # Script to build the noVNC Desktop AMIs using Packer
-# Builds both openbox and elementary variants in a single packer run.
+# Builds the openbox AMI variant.
 #
 # Environment variables:
 #   AWS_REGION       — AWS region (default: us-east-1)
@@ -105,7 +105,7 @@ echo "=========================================="
 echo "Region:        $AWS_REGION"
 echo "Instance Type: $INSTANCE_TYPE"
 echo "AMI Name Prefix: $AMI_NAME_PREFIX"
-echo "Variants:      openbox, elementary"
+echo "Variants:      openbox"
 echo "Use Certbot:   $USE_CERTBOT"
 echo "Public AMI:    $AMI_PUBLIC"
 echo "Public AMI Limit: $PUBLIC_AMI_LIMIT"
@@ -239,12 +239,12 @@ fi
 if [[ "$AMI_PUBLIC" == "true" ]]; then
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "Dry run: would check AMI block public access state in region '$AWS_REGION'."
-        echo "Dry run: would check public AMI quota room for 2 new public AMIs in region '$AWS_REGION'."
+        echo "Dry run: would check public AMI quota room for 1 new public AMI in region '$AWS_REGION'."
     else
         echo "Checking AMI block public access state..."
         check_ami_public_access_block "$AWS_REGION"
         echo "Checking public AMI quota room..."
-        check_public_ami_quota_room "$AWS_REGION" 2
+        check_public_ami_quota_room "$AWS_REGION" 1
     fi
 fi
 
@@ -274,7 +274,7 @@ echo ""
 # Format the configuration
 run_cmd packer fmt packer.pkr.hcl
 
-# Build both AMI variants
+# Build the AMI variant
 run_cmd packer build \
     -var "aws_region=$AWS_REGION" \
     -var "instance_type=$INSTANCE_TYPE" \
@@ -296,5 +296,5 @@ else
     echo "Build complete!"
 fi
 echo "AMI Name Prefix: $AMI_NAME_PREFIX"
-echo "Variants built:  openbox, elementary"
+echo "Variants built:  openbox"
 echo "=========================================="

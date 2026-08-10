@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# provision-openbox.sh — install the Openbox desktop on the smoke test server.
+# provision-openbox.sh — install the openbox-compatible lightweight XFCE desktop on the smoke test server.
 #
 # Usage:
 #   bash smoke/scripts/provision-openbox.sh

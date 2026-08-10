@@ -1,14 +1,23 @@
 ---
-# Openbox + tint2 lightweight window manager
+# Compatibility "openbox" variant: lightweight XFCE session optimized for noVNC.
 
-- name: Install Openbox packages
+- name: Install lightweight XFCE desktop packages
   ansible.builtin.apt:
     name:
-      - openbox
-      - tint2
+      - xfce4
+      - xfce4-goodies
+      - xfce4-terminal
+      - xfce4-clipman
+      - xfce4-clipman-plugin
+      - xfce4-pulseaudio-plugin
+      - xclip
+      - xsel
+      - fonts-inter
+      - fonts-noto
+      - fonts-noto-color-emoji
+      - adwaita-icon-theme-full
       - adwaita-icon-theme
       - hicolor-icon-theme
-      - gnome-icon-theme
       - librsvg2-common
       - gtk-update-icon-cache
     state: present
@@ -27,6 +36,30 @@
   ansible.builtin.set_fact:
     desktop_vnc_home: "{{ '/root' if vnc_user == 'root' else '/home/' + vnc_user }}"
 
+- name: Check Google Chrome executable
+  ansible.builtin.stat:
+    path: /usr/bin/google-chrome-stable
+  register: desktop_chrome_executable
+
+- name: Check Firefox executable paths
+  ansible.builtin.stat:
+    path: '{{ item }}'
+  loop:
+    - /usr/bin/firefox
+    - /snap/bin/firefox
+  register: desktop_firefox_executables
+
+- name: Set managed XFCE panel launcher facts
+  ansible.builtin.set_fact:
+    desktop_chrome_launcher_enabled: '{{ desktop_chrome_executable.stat.exists }}'
+    desktop_firefox_launcher_enabled: >-
+      {{
+        desktop_firefox_executables.results
+        | selectattr('stat.exists', 'equalto', true)
+        | list
+        | length > 0
+      }}
+
 - name: Create Openbox config directory
   ansible.builtin.file:
     path: '{{ desktop_vnc_home }}/.config/openbox'
@@ -43,6 +76,99 @@
     group: '{{ vnc_user }}'
     mode: '0644'
 
+- name: Create XFCE config directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
+  loop:
+    - '{{ desktop_vnc_home }}/.config/autostart'
+    - '{{ desktop_vnc_home }}/.config/xfce4'
+    - '{{ desktop_vnc_home }}/.config/xfce4/xfconf'
+    - '{{ desktop_vnc_home }}/.config/xfce4/xfconf/xfce-perchannel-xml'
+    - '{{ desktop_vnc_home }}/.config/xfce4/panel'
+    - '{{ desktop_vnc_home }}/.config/xfce4/terminal'
+
+- name: Create managed XFCE panel launcher directories
+  ansible.builtin.file:
+    path: '{{ desktop_vnc_home }}/.config/xfce4/panel/launcher-{{ item.id }}'
+    state: directory
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
+  loop:
+    - id: 2
+      enabled: '{{ desktop_chrome_launcher_enabled }}'
+    - id: 3
+      enabled: '{{ desktop_firefox_launcher_enabled }}'
+    - id: 4
+      enabled: true
+  when: item.enabled | bool
+
+- name: Deploy managed XFCE panel configuration
+  ansible.builtin.template:
+    src: xfce4-panel.xml.j2
+    dest: '{{ desktop_vnc_home }}/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+
+- name: Deploy Google Chrome panel launcher
+  ansible.builtin.template:
+    src: xfce-launcher-google-chrome.desktop.j2
+    dest: '{{ desktop_vnc_home }}/.config/xfce4/panel/launcher-2/google-chrome.desktop'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+  when: desktop_chrome_launcher_enabled | bool
+
+- name: Deploy Firefox panel launcher
+  ansible.builtin.template:
+    src: xfce-launcher-firefox.desktop.j2
+    dest: '{{ desktop_vnc_home }}/.config/xfce4/panel/launcher-3/firefox.desktop'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+  when: desktop_firefox_launcher_enabled | bool
+
+- name: Deploy XFCE Terminal panel launcher
+  ansible.builtin.template:
+    src: xfce-launcher-terminal.desktop.j2
+    dest: '{{ desktop_vnc_home }}/.config/xfce4/panel/launcher-4/xfce4-terminal.desktop'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+
+- name: Check XFCE Clipman autostart file
+  ansible.builtin.stat:
+    path: /etc/xdg/autostart/xfce4-clipman-plugin-autostart.desktop
+  register: desktop_clipman_autostart
+
+- name: Enable XFCE Clipman autostart
+  ansible.builtin.copy:
+    src: /etc/xdg/autostart/xfce4-clipman-plugin-autostart.desktop
+    dest: '{{ desktop_vnc_home }}/.config/autostart/xfce4-clipman-plugin-autostart.desktop'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    remote_src: true
+  when: desktop_clipman_autostart.stat.exists
+
+- name: Configure XFCE terminal defaults
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/xfce4/terminal/terminalrc'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [Configuration]
+      FontName=DejaVu Sans Mono 10
+      MiscMenubarDefault=FALSE
+      MiscToolbarDefault=FALSE
+      MiscConfirmClose=FALSE
+
 - name: Create .vnc directory
   ansible.builtin.file:
     path: '{{ desktop_vnc_home }}/.vnc'
@@ -51,7 +177,7 @@
     group: '{{ vnc_user }}'
     mode: '0700'
 
-- name: Deploy Openbox xstartup
+- name: Deploy lightweight XFCE xstartup
   ansible.builtin.template:
     src: xstartup-openbox.j2
     dest: '{{ desktop_vnc_home }}/.vnc/xstartup'

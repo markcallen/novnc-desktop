@@ -100,7 +100,7 @@ Edit `packer.pkr.hcl` or pass variables via the `-var` flag:
 | `aws_region`       | `us-east-1`                  | AWS region for the build                                                                             |
 | `instance_type`    | `t3.medium`                  | EC2 instance type (t3.small for faster/cheaper builds, t3.large for faster builds)                   |
 | `root_volume_size` | `20`                         | Root volume size in GB                                                                               |
-| `ami_name_prefix`  | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary AMI names                                              |
+| `ami_name_prefix`  | `novnc-desktop-ubuntu-24.04` | Prefix applied to openbox AMI names                                                                  |
 | `use_certbot`      | `false`                      | Run certbot at bake time; leave false for public AMIs that use user-data for TLS                     |
 | `ami_public`       | `false`                      | Set launch permissions to allow all AWS accounts (`ami_groups = ["all"]`)                            |
 | `ami_environment`  | `test`                       | Value for the `Environment` tag; use `test` for smoke-discoverable builds, `production` for releases |

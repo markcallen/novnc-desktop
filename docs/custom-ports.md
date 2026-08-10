@@ -1,8 +1,8 @@
 # Running noVNC Desktop on Custom Ports (8080 / 8443)
 
-This guide covers building and launching openbox and elementary AMIs on ports
-8080 (HTTP) and 8443 (HTTPS) — with a self-signed certificate or with a
-Let's Encrypt certificate via certbot.
+This guide covers building and launching openbox AMIs on ports 8080 (HTTP)
+and 8443 (HTTPS) — with a self-signed certificate or with a Let's Encrypt
+certificate via certbot.
 
 ## How certbot works on public AMIs
 
@@ -41,7 +41,8 @@ NOVNC_HTTP_PORT=8080 NOVNC_HTTPS_PORT=8443 \
   ./scripts/build-ami.sh
 ```
 
-Builds both **openbox** and **elementary** variants.
+Builds the **openbox** variant. Elementary remains available for direct
+Ansible provisioning only.
 
 ### 2. Create a security group
 
@@ -103,7 +104,6 @@ If you use the Terraform AMI helper script, pass the domain/email directly:
 
 ```bash
 bash smoke/scripts/infra-ami.sh \
-  --variant elementary \
   --public \
   --http-port 8080 \
   --https-port 8443 \
@@ -213,15 +213,15 @@ sudo CERTBOT_DOMAIN=myapp.example.com \
 
 ---
 
-## Choosing between openbox and elementary
+## AMI desktop variant
 
-Both variants are built from the same Packer run and accept identical launch
-parameters.
+AMI builds publish the openbox variant only. The openbox variant now runs a
+managed lightweight XFCE session optimized for noVNC while retaining the
+existing AMI tag and `desktop_type` compatibility name.
 
-| Variant    | Desktop                | AMI name suffix               |
-| ---------- | ---------------------- | ----------------------------- |
-| openbox    | Openbox (lightweight)  | `-openbox-YYYYMMDD-hhmmss`    |
-| elementary | Elementary OS Pantheon | `-elementary-YYYYMMDD-hhmmss` |
+| Variant | Desktop                  | AMI name suffix            |
+| ------- | ------------------------ | -------------------------- |
+| openbox | Lightweight XFCE session | `-openbox-YYYYMMDD-hhmmss` |
 
 Find the AMI IDs after a build:
 

@@ -129,13 +129,7 @@ Useful `infra-ami.sh` flags:
 | `--no-certbot`            | Force-disable certbot on first boot even when `--domain` is set                               |
 | `--public`                | Resolve AMI from production-tagged images                                                     |
 
-Example for Elementary:
-
-```sh
-pnpm infra:ami --variant elementary --public --domain smoke.markcallen.dev --certbot-email mark@markcallen.dev
-```
-
-For the configurable-port Elementary smoke path, provision with:
+For the configurable-port Elementary direct-Ansible smoke path, provision with:
 
 ```sh
 pnpm provision:elementary:custom-ports
@@ -218,16 +212,16 @@ ansible-playbook site.yml -i <host>, -u ubuntu --private-key ~/.ssh/key.pem
 
 Key variables:
 
-| Variable                    | Default    | Description                                                    |
-| --------------------------- | ---------- | -------------------------------------------------------------- |
-| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`                   |
-| `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session                          |
-| `vnc_geometry`              | `1280x720` | Screen resolution                                              |
-| `auth_token_ttl_seconds`    | `28800`    | Token lifetime in seconds (default 8 hours)                    |
-| `novnc_http_port`           | `80`       | Public HTTP port that redirects to HTTPS                       |
-| `novnc_https_port`          | `443`      | Public HTTPS port served by nginx                              |
-| `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition on `80/443` only |
-| `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification              |
+| Variable                    | Default    | Description                                                                                        |
+| --------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| `desktop_type`              | `openbox`  | Desktop environment for direct Ansible: `openbox` (managed lightweight XFCE session), `elementary` |
+| `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session                                                              |
+| `vnc_geometry`              | `1440x900` | Screen resolution                                                                                  |
+| `auth_token_ttl_seconds`    | `28800`    | Token lifetime in seconds (default 8 hours)                                                        |
+| `novnc_http_port`           | `80`       | Public HTTP port that redirects to HTTPS                                                           |
+| `novnc_https_port`          | `443`      | Public HTTPS port served by nginx                                                                  |
+| `use_certbot`               | `false`    | Attempt Let's Encrypt certificate acquisition on `80/443` only                                     |
+| `smoke_test_marker_enabled` | `false`    | Render green xterm marker for canvas verification                                                  |
 
 After provisioning, SSH in and run `novnc-desktop-url` to get a signed HTTPS URL for the desktop.
 
@@ -248,7 +242,7 @@ Automation tools and user-data scripts should target `novnc-desktop` rather than
 
 ## Pre-built AMIs
 
-Public AMIs for openbox and elementary variants are available for each release. See the [GitHub Releases](https://github.com/markcallen/novnc-desktop/releases) page for current AMI IDs by region.
+Public AMIs are published for the `openbox` variant. The `elementary` desktop remains available for direct Ansible provisioning only. See the [GitHub Releases](https://github.com/markcallen/novnc-desktop/releases) page for current AMI IDs by region.
 
 AMIs are built with `use_certbot: false` — a self-signed TLS certificate is baked in at build time, but no Let's Encrypt certificate is embedded. Pass a user-data script at launch to replace the self-signed cert with a real certificate for your domain.
 
@@ -309,7 +303,7 @@ AMI_NAME_PREFIX=my-novnc AWS_REGION=us-west-2 AMI_PUBLIC=true ./scripts/build-am
 | ----------------- | ---------------------------- | ------------------------------------------------------------------- |
 | `AWS_REGION`      | `us-east-1`                  | AWS region to build in                                              |
 | `INSTANCE_TYPE`   | `t3.medium`                  | EC2 instance type for the build                                     |
-| `AMI_NAME_PREFIX` | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary names                 |
+| `AMI_NAME_PREFIX` | `novnc-desktop-ubuntu-24.04` | Prefix applied to openbox AMI names                                 |
 | `USE_CERTBOT`     | `false`                      | Run certbot at bake time (only for private AMIs)                    |
 | `AMI_PUBLIC`      | `false`                      | Make resulting AMIs publicly launchable                             |
 | `AMI_ENVIRONMENT` | `test`                       | `Environment` tag value; use `production` for public release builds |
