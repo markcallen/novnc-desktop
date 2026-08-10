@@ -2,7 +2,7 @@
 galaxy_info:
   role_name: desktop
   author: markcallen
-  description: Installs and configures a lightweight desktop environment (Openbox or Elementary) for noVNC access.
+  description: Installs and configures a lightweight desktop environment (XFCE-backed Openbox compatibility variant or Elementary) for noVNC access.
   license: MIT
   min_ansible_version: '2.13'
   platforms:

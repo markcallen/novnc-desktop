@@ -92,7 +92,7 @@ The Packer process creates:
   - noVNC web interface
   - Nginx reverse proxy
   - User authentication system
-  - Desktop environment (Elementary + Openbox)
+  - Desktop environment (XFCE-backed openbox variant)
 
 - **Tags Applied**:
   - `Name`: Your chosen AMI name
