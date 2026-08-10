@@ -62,6 +62,17 @@
 - name: Set managed XFCE panel launcher facts
   ansible.builtin.set_fact:
     desktop_chrome_launcher_enabled: '{{ desktop_chrome_executable.stat.exists }}'
+    desktop_firefox_launcher_path: >-
+      {{
+        (
+          desktop_firefox_executables.results
+          | selectattr('stat.exists', 'equalto', true)
+          | map(attribute='item')
+          | list
+          | first
+        )
+        | default('')
+      }}
     desktop_firefox_launcher_enabled: >-
       {{
         desktop_firefox_executables.results
