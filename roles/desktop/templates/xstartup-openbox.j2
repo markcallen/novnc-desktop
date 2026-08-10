@@ -6,7 +6,7 @@ export XDG_SESSION_DESKTOP=xfce
 export DESKTOP_SESSION=xfce
 export GTK_THEME=Adwaita
 
-exec dbus-run-session sh -lc "
+exec dbus-run-session sh <<'NOVNC_XFCE_SESSION'
   xfconf-query -c xfwm4 -p /general/use_compositing -n -t bool -s false || true
   xfconf-query -c xfwm4 -p /general/workspace_count -n -t int -s {{ openbox_desktops }} || true
   xfconf-query -c xfwm4 -p /general/raise_with_any_button -n -t bool -s true || true
@@ -24,4 +24,4 @@ exec dbus-run-session sh -lc "
   (sleep 4; xfce4-terminal --title=SMOKE_READY --geometry=44x8+20+50 --color-bg='#00ff66' --color-text=black --command='sh -lc "printf \"SMOKE READY\n\"; exec sh"') &
 {% endif %}
   exec startxfce4
-"
+NOVNC_XFCE_SESSION

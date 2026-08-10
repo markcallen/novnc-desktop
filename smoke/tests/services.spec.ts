@@ -169,7 +169,7 @@ test.describe('services', () => {
       ssh(
         'rm -f /tmp/novnc-xdg-open-smoke.log && ' +
           'if command -v xfce4-terminal >/dev/null 2>&1; then ' +
-          'DISPLAY=:1 setsid -f xfce4-terminal --title=XDG_OPEN_SMOKE --command=' +
+          'DISPLAY=:1 setsid -f xfce4-terminal --disable-server --title=XDG_OPEN_SMOKE --command=' +
           '\'sh -lc "xdg-open \\"https://www.google.com\\" > /tmp/novnc-xdg-open-smoke.log 2>&1; sleep 10"\'; ' +
           'else ' +
           'DISPLAY=:1 setsid -f xterm -title XDG_OPEN_SMOKE -e sh -lc ' +
@@ -189,7 +189,8 @@ function killChrome(): void {
   ssh(
     'pkill -x chrome || true; ' +
       'pkill -x google-chrome || true; ' +
-      'pkill -x google-chrome-stable || true; ' +
+      'pkill -f "[g]oogle-chrome-stable" || true; ' +
+      'pkill -f "[/]opt/google/chrome/chrome" || true; ' +
       'DISPLAY=:1 wmctrl -c XDG_OPEN_SMOKE 2>/dev/null || true'
   );
 }
