@@ -1,6 +1,6 @@
 # Running noVNC Desktop on Custom Ports (8080 / 8443)
 
-This guide covers building and launching openbox and elementary AMIs on ports
+This guide covers building and launching desktop AMIs on ports
 8080 (HTTP) and 8443 (HTTPS) — with a self-signed certificate or with a
 Let's Encrypt certificate via certbot.
 
@@ -41,7 +41,7 @@ NOVNC_HTTP_PORT=8080 NOVNC_HTTPS_PORT=8443 \
   ./scripts/build-ami.sh
 ```
 
-Builds both **openbox** and **elementary** variants.
+Builds **openbox**, **elementary**, and **kde** variants.
 
 ### 2. Create a security group
 
@@ -213,15 +213,16 @@ sudo CERTBOT_DOMAIN=myapp.example.com \
 
 ---
 
-## Choosing between openbox and elementary
+## Choosing between variants
 
-Both variants are built from the same Packer run and accept identical launch
+All variants are built from the same Packer run and accept identical launch
 parameters.
 
-| Variant    | Desktop                | AMI name suffix               |
-| ---------- | ---------------------- | ----------------------------- |
-| openbox    | Openbox (lightweight)  | `-openbox-YYYYMMDD-hhmmss`    |
-| elementary | Elementary OS Pantheon | `-elementary-YYYYMMDD-hhmmss` |
+| Variant    | Desktop                  | AMI name suffix               |
+| ---------- | ------------------------ | ----------------------------- |
+| openbox    | Openbox (lightweight)    | `-openbox-YYYYMMDD-hhmmss`    |
+| elementary | Elementary OS Pantheon   | `-elementary-YYYYMMDD-hhmmss` |
+| kde        | KDE Plasma with WhiteSur | `-kde-YYYYMMDD-hhmmss`        |
 
 Find the AMI IDs after a build:
 

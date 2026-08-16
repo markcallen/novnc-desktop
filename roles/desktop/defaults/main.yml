@@ -1,6 +1,6 @@
 ---
 # Desktop environment to install.
-# Options: openbox (default), elementary
+# Options: openbox (default), elementary, kde
 desktop_type: openbox
 
 # User that owns the desktop session.
@@ -16,3 +16,10 @@ openbox_desktops: 1
 # Set to true during smoke tests to paint a bright-green xterm on screen
 # so the Playwright canvas checker can verify the desktop is rendering.
 smoke_test_marker_enabled: false
+
+# WhiteSur theme refs used by the KDE variant. Pin these to a commit SHA for
+# fully reproducible builds.
+whitesur_kde_repo: https://github.com/vinceliuice/WhiteSur-kde.git
+whitesur_kde_ref: master
+whitesur_gtk_repo: https://github.com/vinceliuice/WhiteSur-gtk-theme.git
+whitesur_gtk_ref: master

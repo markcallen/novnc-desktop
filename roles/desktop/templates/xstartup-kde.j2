@@ -1,0 +1,46 @@
+#!/bin/sh
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+export XDG_CURRENT_DESKTOP=KDE
+export XDG_SESSION_DESKTOP=KDE
+export XDG_SESSION_TYPE=x11
+export KDE_FULL_SESSION=true
+export KDE_SESSION_VERSION=5
+export QT_STYLE_OVERRIDE=kvantum
+export GTK_THEME=WhiteSur-Dark
+export KWIN_COMPOSE=N
+
+dbus-launch --exit-with-session sh -lc "
+  session_pid=\$\$
+  (
+    while kill -0 \"\$session_pid\" 2>/dev/null; do
+      pkill -x polkit-kde-aut 2>/dev/null || true
+      pkill -x polkit-agent-he 2>/dev/null || true
+      pkill -x kscreenlocker_greet 2>/dev/null || true
+      sleep 2
+    done
+  ) &
+
+  (
+    sleep 15
+    if ! pgrep -x plasmashell >/dev/null 2>&1; then
+      plasmashell >/tmp/novnc-plasmashell.log 2>&1 &
+    fi
+  ) &
+
+{% if smoke_test_marker_enabled | bool %}
+  xterm -title SMOKE_READY -geometry 44x8+20+20 -bg '#00ff66' -fg black -e sh -lc \"printf 'SMOKE READY\n'; exec sh\" &
+  (
+    for _ in \$(seq 1 45); do
+      if wmctrl -a SMOKE_READY 2>/dev/null; then
+        break
+      fi
+      sleep 1
+    done
+  ) &
+{% endif %}
+
+  startplasma-x11 &
+  plasma_pid=\$!
+  wait \"\$plasma_pid\"
+"

@@ -5,7 +5,7 @@
 #   pnpm infra:ami [OPTIONS] [AMI_ID]
 #
 # Options:
-#   --variant <openbox|elementary>   Desktop variant to find (default: openbox)
+#   --variant <openbox|elementary|kde> Desktop variant to find (default: openbox)
 #   --http-port <port>               HTTP port (default: 80)
 #   --https-port <port>              HTTPS port (default: 443)
 #   --domain <zone>                  Parent Route53 zone (e.g. smoke.markcallen.dev)
@@ -21,6 +21,7 @@
 # Examples:
 #   pnpm infra:ami
 #   pnpm infra:ami --variant elementary
+#   pnpm infra:ami --variant kde
 #   pnpm infra:ami --domain smoke.markcallen.dev --public
 #   pnpm infra:ami --domain smoke.markcallen.dev --certbot-email admin@example.com --public
 #   pnpm infra:ami --domain smoke.markcallen.dev --iam-instance-profile novnc-desktop-certbot --public
@@ -98,8 +99,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$VARIANT" != "openbox" && "$VARIANT" != "elementary" ]]; then
-  echo "ERROR: --variant must be 'openbox' or 'elementary'" >&2
+if [[ "$VARIANT" != "openbox" && "$VARIANT" != "elementary" && "$VARIANT" != "kde" ]]; then
+  echo "ERROR: --variant must be 'openbox', 'elementary', or 'kde'" >&2
   exit 1
 fi
 

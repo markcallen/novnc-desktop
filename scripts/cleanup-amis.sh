@@ -7,7 +7,7 @@
 # Options:
 #   --region <region>          AWS region (default: us-east-1)
 #   --environment <env>        Filter by Environment tag: test|production|all (default: test)
-#   --variant <variant>        Filter by Variant tag: openbox|elementary|all (default: all)
+#   --variant <variant>        Filter by Variant tag: openbox|elementary|kde|all (default: all)
 #   --prefix <prefix>          Filter by AMI name prefix (default: novnc-desktop-ubuntu-24.04)
 #   --keep <n>                 Keep the N most recent AMIs per variant (default: 0 — delete all)
 #   --dry-run                  Print what would be deleted without deleting anything
@@ -78,8 +78,8 @@ if [[ "$ENVIRONMENT" != "test" && "$ENVIRONMENT" != "production" && "$ENVIRONMEN
   exit 1
 fi
 
-if [[ "$VARIANT" != "openbox" && "$VARIANT" != "elementary" && "$VARIANT" != "all" ]]; then
-  echo "ERROR: --variant must be openbox, elementary, or all" >&2
+if [[ "$VARIANT" != "openbox" && "$VARIANT" != "elementary" && "$VARIANT" != "kde" && "$VARIANT" != "all" ]]; then
+  echo "ERROR: --variant must be openbox, elementary, kde, or all" >&2
   exit 1
 fi
 

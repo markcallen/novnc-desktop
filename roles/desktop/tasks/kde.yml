@@ -1,0 +1,235 @@
+---
+# KDE Plasma desktop with WhiteSur theme assets.
+
+- name: Install KDE Plasma packages
+  ansible.builtin.apt:
+    name:
+      - kde-plasma-desktop
+      - konsole
+      - plasma-workspace
+      - kwin-x11
+      - dbus-x11
+      - xterm
+      - wmctrl
+      - git
+      - sassc
+      - libglib2.0-dev-bin
+      - libxml2-utils
+      - qt5-style-kvantum
+      - adwaita-icon-theme
+      - hicolor-icon-theme
+      - gtk-update-icon-cache
+    state: present
+
+- name: Mask display manager to prevent it conflicting with VNC
+  ansible.builtin.systemd:
+    name: '{{ item }}'
+    masked: true
+    daemon_reload: false
+  loop:
+    - sddm
+    - lightdm
+    - gdm3
+  failed_when: false
+
+- name: Set VNC home directory
+  ansible.builtin.set_fact:
+    desktop_vnc_home: "{{ '/root' if vnc_user == 'root' else '/home/' + vnc_user }}"
+
+- name: Clone WhiteSur KDE theme source
+  ansible.builtin.git:
+    repo: '{{ whitesur_kde_repo }}'
+    dest: /opt/whitesur-kde
+    version: '{{ whitesur_kde_ref }}'
+    depth: 1
+    force: true
+
+- name: Clone WhiteSur GTK theme source
+  ansible.builtin.git:
+    repo: '{{ whitesur_gtk_repo }}'
+    dest: /opt/whitesur-gtk-theme
+    version: '{{ whitesur_gtk_ref }}'
+    depth: 1
+    force: true
+
+- name: Install WhiteSur KDE theme assets
+  ansible.builtin.command: /opt/whitesur-kde/install.sh -c dark
+  args:
+    creates: /usr/share/plasma/look-and-feel/com.github.vinceliuice.WhiteSur-dark
+
+- name: Install WhiteSur GTK theme assets
+  ansible.builtin.command: /opt/whitesur-gtk-theme/install.sh --silent-mode -c dark
+  args:
+    creates: /usr/share/themes/WhiteSur-Dark
+
+- name: Create KDE user config directories
+  ansible.builtin.file:
+    path: '{{ desktop_vnc_home }}/{{ item }}'
+    state: directory
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
+  loop:
+    - .vnc
+    - .config
+    - .config/autostart
+    - .config/gtk-3.0
+    - .config/Kvantum
+    - .local
+    - .local/share
+    - .local/share/kxmlgui5
+    - .local/share/kxmlgui5/konsole
+
+- name: Configure KDE global theme
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/kdeglobals'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [General]
+      ColorScheme=WhiteSurDark
+      Name=WhiteSurDark
+      shadeSortColumn=true
+
+      [Icons]
+      Theme=breeze-dark
+
+      [KDE]
+      LookAndFeelPackage=com.github.vinceliuice.WhiteSur-dark
+      SingleClick=false
+
+      [WM]
+      activeBackground=42,46,53
+      activeForeground=239,240,241
+
+- name: Configure KDE window decoration
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/kwinrc'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [org.kde.kdecoration2]
+      library=org.kde.kwin.aurorae
+      theme=__aurorae__svg__WhiteSur-dark
+
+- name: Configure Plasma shell defaults
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/plasmashellrc'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [Theme]
+      name=WhiteSur-dark
+
+- name: Configure Kvantum theme
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/Kvantum/kvantum.kvconfig'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [General]
+      theme=WhiteSur
+
+- name: Disable KDE screen locking in VNC session
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/kscreenlockerrc'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [Daemon]
+      Autolock=false
+      LockOnResume=false
+      Timeout=0
+
+- name: Disable KDE Wallet password prompts in VNC session
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/kwalletrc'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [Wallet]
+      Enabled=false
+
+- name: Disable KDE polkit authentication prompt in VNC session
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/autostart/org.kde.polkit-kde-authentication-agent-1.desktop'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=PolicyKit Authentication Agent
+      Hidden=true
+      X-KDE-autostart-condition=false
+
+- name: Disable system KDE polkit authentication agent autostart
+  ansible.builtin.copy:
+    dest: /etc/xdg/autostart/polkit-kde-authentication-agent-1.desktop
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=PolicyKit Authentication Agent
+      Hidden=true
+      X-KDE-autostart-condition=false
+
+- name: Ensure polkit rules directory exists
+  ansible.builtin.file:
+    path: /etc/polkit-1/rules.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy polkit rules to suppress authentication prompts in VNC
+  ansible.builtin.template:
+    src: 45-vnc-polkit.rules.j2
+    dest: /etc/polkit-1/rules.d/45-vnc-polkit.rules
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Configure GTK theme for GTK apps in KDE
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.config/gtk-3.0/settings.ini'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      [Settings]
+      gtk-theme-name=WhiteSur-Dark
+      gtk-icon-theme-name=breeze-dark
+      gtk-application-prefer-dark-theme=true
+
+- name: Configure Konsole copy paste shortcuts
+  ansible.builtin.copy:
+    dest: '{{ desktop_vnc_home }}/.local/share/kxmlgui5/konsole/sessionui.rc'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0644'
+    content: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <gui name="session" version="32">
+       <ActionProperties scheme="Default">
+        <Action name="edit_copy" shortcut="Ctrl+C"/>
+        <Action name="edit_paste" shortcut="Ctrl+V; Shift+Ins"/>
+        <Action name="sigint-signal" shortcut="Ctrl+Shift+C"/>
+       </ActionProperties>
+      </gui>
+
+- name: Deploy KDE xstartup
+  ansible.builtin.template:
+    src: xstartup-kde.j2
+    dest: '{{ desktop_vnc_home }}/.vnc/xstartup'
+    owner: '{{ vnc_user }}'
+    group: '{{ vnc_user }}'
+    mode: '0755'
