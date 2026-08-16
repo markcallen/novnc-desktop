@@ -30,6 +30,8 @@ server {
 
   # Internal subrequest used by auth_request below.
   # nginx calls this for every request hitting the protected location.
+  # The response includes X-VNC-Backend: 127.0.0.1:<port> which nginx
+  # captures and uses to route the request to the correct websockify process.
   location = /_auth/verify {
     internal;
     proxy_pass http://127.0.0.1:{{ auth_service_port }}/verify;
@@ -53,15 +55,28 @@ server {
     deny all;
   }
 
+  # Redirect bare root to the noVNC page so authenticated users who land on /
+  # (e.g. from an old bookmark) get the desktop rather than a directory listing.
+  location = / {
+    auth_request /_auth/verify;
+    error_page 401 = @unauthorized;
+    return 302 /vnc.html?autoconnect=1&resize=remote;
+  }
+
   # Protected: noVNC static files and WebSocket proxy.
+  # auth_request_set captures the per-user websockify backend from the
+  # X-VNC-Backend response header returned by /verify (e.g. 127.0.0.1:6081).
+  # proxy_pass then routes to that backend so each user reaches their own
+  # VNC session rather than a shared single backend.
   location / {
     auth_request /_auth/verify;
+    auth_request_set $vnc_backend $upstream_http_x_vnc_backend;
 
     # On auth failure redirect to the access endpoint.
     # The user will need a fresh novnc-desktop-url link.
     error_page 401 = @unauthorized;
 
-    proxy_pass http://127.0.0.1:6080/;
+    proxy_pass http://$vnc_backend/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade    $http_upgrade;
     proxy_set_header Connection $connection_upgrade;

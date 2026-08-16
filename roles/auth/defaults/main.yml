@@ -13,3 +13,11 @@ novnc_base_url: >-
 
 # Port the auth service listens on (localhost only).
 auth_service_port: 8898
+
+# The OS user pre-registered in the user registry during provisioning.
+# Set this to match the vnc_user configured in the vnc role.
+# Display number and websockify port for that initial user must also match
+# what the novnc role configures (display 1, websockify on 6080 + display).
+auth_initial_user: ubuntu
+auth_initial_display: 1
+auth_initial_ws_port: 6081

@@ -22,6 +22,13 @@ export LANG="${NOVNC_ANSIBLE_LOCALE:-en_US.utf8}"
 export LC_ALL="${NOVNC_ANSIBLE_LOCALE:-en_US.utf8}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Load .env from the repo root if present (never required; overrides defaults).
+if [[ -f "$REPO_ROOT/.env" ]]; then
+  # shellcheck source=/dev/null
+  set -a; source "$REPO_ROOT/.env"; set +a
+fi
+
 STATE_DIR="$REPO_ROOT/.smoke-state"
 STATE_FILE="$STATE_DIR/state.json"
 
@@ -96,6 +103,10 @@ cd "$REPO_ROOT"
 # ---------------------------------------------------------------------------
 _ANSIBLE_TLS_VARS=""
 if [[ -n "$_STATE_TLS_DOMAIN" ]]; then
+  if [[ -z "${LETSENCRYPT_EMAIL:-}" ]]; then
+    echo "[provision:$DESKTOP_TYPE] ERROR: LETSENCRYPT_EMAIL must be set when a TLS domain is configured." >&2
+    exit 1
+  fi
   _ANSIBLE_TLS_VARS=" use_certbot=true tls_domain=$_STATE_TLS_DOMAIN letsencrypt_email=${LETSENCRYPT_EMAIL}"
   echo "[provision:$DESKTOP_TYPE] TLS domain detected: $_STATE_TLS_DOMAIN (certbot enabled)"
 fi

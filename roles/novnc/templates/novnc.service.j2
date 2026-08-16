@@ -5,7 +5,7 @@ Wants=tigervncserver@:{{ vnc_display }}.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/websockify --web=/usr/share/novnc/ 6080 localhost:590{{ vnc_display }}
+ExecStart=/usr/bin/websockify --web=/usr/share/novnc/ {{ 6080 + (vnc_display | int) }} localhost:590{{ vnc_display }}
 Restart=on-failure
 
 [Install]

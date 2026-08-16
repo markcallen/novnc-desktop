@@ -23,9 +23,15 @@
 
 set -euo pipefail
 
-VNC_USER="${VNC_USER:-ubuntu}"
-
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Load .env from the repo root if present (never required; overrides defaults).
+if [[ -f "$REPO_ROOT/.env" ]]; then
+  # shellcheck source=/dev/null
+  set -a; source "$REPO_ROOT/.env"; set +a
+fi
+
+VNC_USER="${VNC_USER:-ubuntu}"
 TF_DIR="$REPO_ROOT/smoke/ec2"
 KEYS_DIR="$REPO_ROOT/.smoke-keys"
 STATE_DIR="$REPO_ROOT/.smoke-state"

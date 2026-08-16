@@ -24,6 +24,13 @@ TLS_ZONE="smoke.markcallen.dev"
 LABEL="infra:up:tls"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Load .env from the repo root if present (never required; overrides defaults).
+if [[ -f "$REPO_ROOT/.env" ]]; then
+  # shellcheck source=/dev/null
+  set -a; source "$REPO_ROOT/.env"; set +a
+fi
+
 TF_DIR="$REPO_ROOT/smoke/ec2"
 KEYS_DIR="$REPO_ROOT/.smoke-keys"
 STATE_DIR="$REPO_ROOT/.smoke-state"

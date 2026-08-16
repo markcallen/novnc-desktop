@@ -6,17 +6,91 @@
 #
 # Run this command over SSH to get a URL you can paste into a browser.
 # No VNC password is needed; the URL itself is the credential.
+# Each OS user on this machine gets an independent desktop session.
+# If no session exists yet for the calling user, one is created automatically.
 
 set -euo pipefail
 
-RESULT=$(curl -sf -X POST http://127.0.0.1:8898/generate 2>/dev/null) || {
+AUTH_URL="http://127.0.0.1:8898"
+CURRENT_USER=$(id -un)
+SETUP_CMD="/usr/local/bin/novnc-user-setup"
+GEN_KEY_FILE="${HOME}/.novnc-gen-key"
+TMP_BODY=$(mktemp)
+trap 'rm -f "$TMP_BODY"' EXIT
+
+# ---------------------------------------------------------------------------
+# Check registration status. Distinguishes:
+#   200  → registered
+#   404  → not registered (service is up)
+#   000  → connection failed (service is down)
+# ---------------------------------------------------------------------------
+HTTP_CODE=$(curl -s -o "$TMP_BODY" -w "%{http_code}" --max-time 5 \
+  "${AUTH_URL}/user-status?user=${CURRENT_USER}" 2>/dev/null) || HTTP_CODE="000"
+
+case "$HTTP_CODE" in
+  200)
+    # Already registered — but ensure the key file exists (it may be absent on
+    # systems provisioned before key-based auth was introduced).
+    if [[ ! -f "$GEN_KEY_FILE" ]]; then
+      echo "Refreshing desktop credentials for '${CURRENT_USER}'..." >&2
+      if ! sudo "${SETUP_CMD}" "${CURRENT_USER}"; then
+        echo "ERROR: Could not refresh credentials for '${CURRENT_USER}'." >&2
+        exit 1
+      fi
+    fi
+    ;;
+  404)
+    # Service is up but user is not registered — set up on demand.
+    echo "No desktop session found for '${CURRENT_USER}'. Setting up now..." >&2
+
+    if ! sudo "${SETUP_CMD}" "${CURRENT_USER}"; then
+      echo "" >&2
+      echo "ERROR: Desktop setup failed for user '${CURRENT_USER}'." >&2
+      echo "       Check system logs: journalctl -xe" >&2
+      exit 1
+    fi
+    ;;
+  000)
+    echo "ERROR: Could not reach the novnc-auth service." >&2
+    echo "       Is novnc-auth.service running?" >&2
+    exit 1
+    ;;
+  *)
+    echo "ERROR: Unexpected response from novnc-auth (HTTP ${HTTP_CODE})." >&2
+    exit 1
+    ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Generate and display the access URL.
+# ---------------------------------------------------------------------------
+GEN_KEY=$(cat "$GEN_KEY_FILE" 2>/dev/null) || {
+  echo "ERROR: Could not read credentials from ${GEN_KEY_FILE}." >&2
+  echo "       Run 'sudo novnc-user-setup ${CURRENT_USER}' to set up your desktop." >&2
+  exit 1
+}
+
+RESULT=$(curl -sf --max-time 10 -X POST \
+  "${AUTH_URL}/generate?user=${CURRENT_USER}&key=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.stdin.read().strip(),safe=''))" <<< "$GEN_KEY")" \
+  2>/dev/null) || {
   echo "ERROR: Could not reach the novnc-auth service." >&2
   echo "       Is novnc-auth.service running?" >&2
   exit 1
 }
 
-URL=$(printf '%s' "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['url'])")
-EXPIRES=$(printf '%s' "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['expires_at'])")
+ERROR=$(printf '%s' "$RESULT" | python3 -c \
+  "import sys,json; d=json.load(sys.stdin); print(d.get('error',''))" \
+  2>/dev/null || true)
+
+if [ -n "$ERROR" ]; then
+  echo "ERROR: $ERROR" >&2
+  exit 1
+fi
+
+URL=$(printf '%s' "$RESULT" | python3 -c \
+  "import sys,json; print(json.load(sys.stdin)['url'])")
+EXPIRES=$(printf '%s' "$RESULT" | python3 -c \
+  "import sys,json; print(json.load(sys.stdin)['expires_at'])")
 
 echo ""
 echo "  Desktop URL : $URL"

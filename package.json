@@ -21,6 +21,7 @@
     "provision:elementary:custom-ports": "bash smoke/scripts/provision-elementary-custom-ports.sh",
     "test": "playwright test",
     "test:unit": "node --test smoke/unit/helpers.test.ts",
+    "test:unit:auth": "python3 -m unittest smoke/unit/test_novnc_auth.py -v",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prettier": "prettier . --check",
