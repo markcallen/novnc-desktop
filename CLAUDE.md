@@ -25,16 +25,33 @@ Update this section when those facts change. If live runtime state is required, 
 
 Created by Ballast. Do not edit this section.
 
+### Repository Tool Policy
+
+- Check `.rulesrc.json` `tools` before adding, installing, or running language tooling.
+- Configured tools: ansible=ansible-lint,molecule; terraform=tfenv,tflint,trivy; typescript=pnpm,corepack.
+- For TypeScript commands, prefer `pnpm`/`pnpm exec` over `npm`/`npx` when the command is project-scoped.
+
 Read and follow these rule files in `.claude/rules/` when they apply:
 
-- `.claude/rules/common/publishing-libraries.md` — Rules for common/publishing-libraries
-- `.claude/rules/common/publishing-sdks.md` — Rules for common/publishing-sdks
-- `.claude/rules/common/publishing-apps.md` — Rules for common/publishing-apps
+- `.claude/rules/common/local-dev-autonomy.md` — Rules for common/local-dev-autonomy
+- `.claude/rules/common/local-dev-badges.md` — Rules for common/local-dev-badges
+- `.claude/rules/common/local-dev-env.md` — Rules for common/local-dev-env
+- `.claude/rules/common/local-dev-license.md` — Rules for common/local-dev-license
+- `.claude/rules/common/docs.md` — Rules for common/docs
+- `.claude/rules/common/cicd.md` — Rules for common/cicd
+- `.claude/rules/common/git-hooks.md` — Rules for common/git-hooks
+- `.claude/rules/typescript/typescript-linting.md` — Rules for typescript/linting
+- `.claude/rules/typescript/typescript-testing.md` — Rules for typescript/testing
+- `.claude/rules/ansible/ansible-linting.md` — Rules for ansible/linting
+- `.claude/rules/ansible/ansible-testing.md` — Rules for ansible/testing
+- `.claude/rules/terraform/terraform-linting.md` — Rules for terraform/linting
+- `.claude/rules/terraform/terraform-testing.md` — Rules for terraform/testing
 
 ## Installed skills
 
 Created by Ballast. Do not edit this section.
 
-Read and use these skill files in `.claude/skills/` when they are relevant:
+These skills are registered with Claude Code. Invoke one by name (for example `/ballast-audit`) when it is relevant:
 
-- `.claude/skills/github-health-check.skill` — run a comprehensive GitHub repository health check covering CI status, code quality, branch hygiene, and repo configuration
+- `/github-health-check` — run a comprehensive GitHub repository health check covering CI status, code quality, branch hygiene, and repo configuration
+- `/ballast-audit` — audit a Ballast installation for stale, unowned, oversized, and irrelevant rules and skills, and report the narrowest config that still covers the repository

@@ -1,10 +1,5 @@
+<!-- ballast:rule id="ansible/testing" version="5.21.3" checksum="97e7794a5a876c5f6a85d9f3d10aa45f0696b05a63cd59769fabfc2a62cd0157" -->
 # Ansible Testing Rules
-
-These rules provide Ansible Testing Rules guidance for projects in this repository.
-
----
-
-You are an Ansible testing specialist. Your role is to set up reliable validation for playbooks and roles before they touch real infrastructure.
 
 ## Your Responsibilities
 
@@ -14,6 +9,7 @@ You are an Ansible testing specialist. Your role is to set up reliable validatio
 4. Add a local smoke path for at least one representative playbook or role.
 5. Prefer Molecule for reusable role testing when the repo already has container-based test infrastructure.
 6. Ensure CI fails on syntax, lint, or check-mode regressions.
+7. Coordinate with `pre-commit` so fast checks can run locally and broader validation can run at pre-push or CI time.
 
 ## Baseline Commands
 
@@ -21,6 +17,17 @@ You are an Ansible testing specialist. Your role is to set up reliable validatio
 - `yamllint .`
 - `ansible-playbook --syntax-check site.yml`
 - `ansible-playbook --check --diff -i hosts.ini.example playbook.yml`
+
+## Local Hook Validation
+
+For Ansible repositories, use `pre-commit`. Configure commit-time hooks for fast linting and formatting checks, and configure the pre-push stage for validation that is too slow or broad for every commit.
+
+Recommended hook split:
+
+- `pre-commit`: `ansible-lint` and `yamllint`
+- `pre-push`: `ansible-playbook --syntax-check` for top-level playbooks and any safe check-mode smoke command
+
+Install hooks with `pre-commit install` and `pre-commit install --hook-type pre-push`. Keep pinned hook revisions current with `pre-commit autoupdate`.
 
 ## Example Coverage
 

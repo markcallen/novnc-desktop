@@ -121,16 +121,33 @@ the ground truth for whether the provisioned system is verified.
 
 Created by Ballast. Do not edit this section.
 
+### Repository Tool Policy
+
+- Check `.rulesrc.json` `tools` before adding, installing, or running language tooling.
+- Configured tools: ansible=ansible-lint,molecule; terraform=tfenv,tflint,trivy; typescript=pnpm,corepack.
+- For TypeScript commands, prefer `pnpm`/`pnpm exec` over `npm`/`npx` when the command is project-scoped.
+
 Read and follow these rule files in `.codex/rules/` when they apply:
 
-- `.codex/rules/common/publishing-libraries.md` — Rules for common/publishing-libraries
-- `.codex/rules/common/publishing-sdks.md` — Rules for common/publishing-sdks
-- `.codex/rules/common/publishing-apps.md` — Rules for common/publishing-apps
+- `.codex/rules/common/local-dev-autonomy.md` — Rules for common/local-dev-autonomy
+- `.codex/rules/common/local-dev-badges.md` — Rules for common/local-dev-badges
+- `.codex/rules/common/local-dev-env.md` — Rules for common/local-dev-env
+- `.codex/rules/common/local-dev-license.md` — Rules for common/local-dev-license
+- `.codex/rules/common/docs.md` — Rules for common/docs
+- `.codex/rules/common/cicd.md` — Rules for common/cicd
+- `.codex/rules/common/git-hooks.md` — Rules for common/git-hooks
+- `.codex/rules/typescript/typescript-linting.md` — Rules for typescript/linting
+- `.codex/rules/typescript/typescript-testing.md` — Rules for typescript/testing
+- `.codex/rules/ansible/ansible-linting.md` — Rules for ansible/linting
+- `.codex/rules/ansible/ansible-testing.md` — Rules for ansible/testing
+- `.codex/rules/terraform/terraform-linting.md` — Rules for terraform/linting
+- `.codex/rules/terraform/terraform-testing.md` — Rules for terraform/testing
 
 ## Installed skills
 
 Created by Ballast. Do not edit this section.
 
-Read and use these skill files in `.codex/rules/` when they are relevant:
+Read and use these skill files in `.codex/skills/` when they are relevant:
 
-- `.codex/rules/github-health-check.md` — run a comprehensive GitHub repository health check covering CI status, code quality, branch hygiene, and repo configuration
+- `.codex/skills/github-health-check/SKILL.md` — run a comprehensive GitHub repository health check covering CI status, code quality, branch hygiene, and repo configuration
+- `.codex/skills/ballast-audit/SKILL.md` — audit a Ballast installation for stale, unowned, oversized, and irrelevant rules and skills, and report the narrowest config that still covers the repository

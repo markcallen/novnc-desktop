@@ -11,3 +11,4 @@ pnpm-lock.yaml
 .ballast
 examples/
 smoke/ec2/
+.rulesrc.json
