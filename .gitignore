@@ -39,3 +39,6 @@ test-results/
 
 # ai files
 .claude/scheduled_tasks.lock
+
+# env files
+.env
