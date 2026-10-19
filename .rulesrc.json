@@ -9,7 +9,8 @@
     "cicd",
     "git-hooks",
     "linting",
-    "testing"
+    "testing",
+    "testing-process"
   ],
   "skills": [
     "github-health-check",
@@ -34,8 +35,7 @@
   },
   "tools": {
     "ansible": [
-      "ansible-lint",
-      "molecule"
+      "ansible-lint"
     ],
     "terraform": [
       "tfenv",

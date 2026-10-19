@@ -14,12 +14,21 @@ Keep only stable, reviewable metadata here. Do not store secrets, credentials, o
 - Version-file locations: `.nvmrc` (Node v25), `package.json` (`packageManager`)
 - Canonical config files: `ansible.cfg`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc`, `.ansible-lint`, `.yamllint`
 - Primary CI workflows: `.github/workflows/lint.yml`, `.github/workflows/ansible-lint.yml`
-- Primary release/publish workflows: none (private project)
-- Preferred commands: `pnpm run lint`, `pnpm run prettier`, `pnpm test`, `ansible-lint`, `yamllint .`
-- Coverage threshold: N/A (smoke/E2E tests only, no unit test coverage gate)
+- Primary release/publish workflow: `.github/workflows/publish.yml` (version bump, tag, and GitHub Release; no package registry publish)
+- Preferred commands: `pnpm run lint`, `pnpm run prettier`, `pnpm run test:unit`, `pnpm test` (provisioned smoke host), `ansible-lint`, `yamllint .`
+- Coverage threshold: N/A (Node unit tests and Playwright smoke/E2E tests; no unit test coverage gate)
 - Generated/protected paths (do not edit): `.smoke-state/`, `.smoke-artifacts/`, `.smoke-keys/`, `pnpm-lock.yaml`, `node_modules/`
 
 Update this section when those facts change. If live runtime state is required, discover it separately instead of treating it as a durable repo fact.
+
+## Repository Tooling Decisions
+
+These project decisions take precedence over generic generated setup rules:
+
+- Keep the existing Husky hooks in `.husky/`. Extend those hooks when local checks change; do not introduce `pre-commit` solely because a generated rule recommends it.
+- Use the existing Node built-in runner for `pnpm run test:unit` and Playwright for `pnpm test`. The smoke suite needs a provisioned host. Do not add Jest, Vitest, `test:coverage`, or a 50% coverage gate solely to satisfy a generated default.
+- The smoke path provisions a real EC2 host with Terraform and Ansible; do not add Docker Compose smoke infrastructure solely to satisfy a generated default.
+- Molecule is not part of the current Ansible validation path. Use the existing `ansible-lint`, `yamllint`, and smoke checks; add Molecule only if role-level scenarios are deliberately introduced.
 
 ## Verification Chain
 
@@ -124,7 +133,7 @@ Created by Ballast. Do not edit this section.
 ### Repository Tool Policy
 
 - Check `.rulesrc.json` `tools` before adding, installing, or running language tooling.
-- Configured tools: ansible=ansible-lint,molecule; terraform=tfenv,tflint,trivy; typescript=pnpm,corepack.
+- Configured tools: ansible=ansible-lint; terraform=tfenv,tflint,trivy; typescript=pnpm,corepack.
 - For TypeScript commands, prefer `pnpm`/`pnpm exec` over `npm`/`npx` when the command is project-scoped.
 
 Read and follow these rule files in `.codex/rules/` when they apply:
@@ -136,6 +145,7 @@ Read and follow these rule files in `.codex/rules/` when they apply:
 - `.codex/rules/common/docs.md` — Rules for common/docs
 - `.codex/rules/common/cicd.md` — Rules for common/cicd
 - `.codex/rules/common/git-hooks.md` — Rules for common/git-hooks
+- `.codex/rules/common/testing-process.md` — Rules for common/testing-process
 - `.codex/rules/typescript/typescript-linting.md` — Rules for typescript/linting
 - `.codex/rules/typescript/typescript-testing.md` — Rules for typescript/testing
 - `.codex/rules/ansible/ansible-linting.md` — Rules for ansible/linting
