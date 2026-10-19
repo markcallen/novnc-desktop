@@ -111,7 +111,15 @@ An SSH key pair is generated automatically — no pre-existing EC2 key pair is n
 pnpm infra:up
 ```
 
-Creates the EC2 instance, generates a dedicated SSH key pair, runs the Ansible playbook, and saves connection details to `.smoke-state/state.json`.
+Creates the EC2 instance, generates a dedicated SSH key pair, and saves connection details to `.smoke-state/state.json`.
+
+Then install the desktop variant you want to test:
+
+```sh
+pnpm provision:openbox
+pnpm provision:elementary
+pnpm provision:kde
+```
 
 To launch directly from an existing noVNC AMI (instead of provisioning Ubuntu from scratch), use:
 
@@ -133,6 +141,12 @@ Example for Elementary:
 
 ```sh
 pnpm infra:ami --variant elementary --public --domain smoke.markcallen.dev --certbot-email mark@markcallen.dev
+```
+
+Example for KDE:
+
+```sh
+pnpm infra:ami --variant kde --public --domain smoke.markcallen.dev --certbot-email mark@markcallen.dev
 ```
 
 For the configurable-port Elementary smoke path, provision with:
@@ -220,7 +234,7 @@ Key variables:
 
 | Variable                    | Default    | Description                                                    |
 | --------------------------- | ---------- | -------------------------------------------------------------- |
-| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`                   |
+| `desktop_type`              | `openbox`  | Desktop environment: `openbox`, `elementary`, `kde`            |
 | `vnc_user`                  | `ubuntu`   | OS user that owns the desktop session                          |
 | `vnc_geometry`              | `1280x720` | Screen resolution                                              |
 | `auth_token_ttl_seconds`    | `28800`    | Token lifetime in seconds (default 8 hours)                    |
@@ -248,7 +262,7 @@ Automation tools and user-data scripts should target `novnc-desktop` rather than
 
 ## Pre-built AMIs
 
-Public AMIs for openbox and elementary variants are available for each release. See the [GitHub Releases](https://github.com/markcallen/novnc-desktop/releases) page for current AMI IDs by region.
+Public AMIs for supported desktop variants are available for each release. See the [GitHub Releases](https://github.com/markcallen/novnc-desktop/releases) page for current AMI IDs by region.
 
 AMIs are built with `use_certbot: false` — a self-signed TLS certificate is baked in at build time, but no Let's Encrypt certificate is embedded. Pass a user-data script at launch to replace the self-signed cert with a real certificate for your domain.
 
@@ -292,7 +306,7 @@ AMIs are built with `use_certbot: false` — a self-signed TLS certificate is ba
 
 ### Building AMIs
 
-To build both variants yourself:
+To build all variants yourself:
 
 ```sh
 # Build private AMIs (default)
@@ -309,7 +323,7 @@ AMI_NAME_PREFIX=my-novnc AWS_REGION=us-west-2 AMI_PUBLIC=true ./scripts/build-am
 | ----------------- | ---------------------------- | ------------------------------------------------------------------- |
 | `AWS_REGION`      | `us-east-1`                  | AWS region to build in                                              |
 | `INSTANCE_TYPE`   | `t3.medium`                  | EC2 instance type for the build                                     |
-| `AMI_NAME_PREFIX` | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary names                 |
+| `AMI_NAME_PREFIX` | `novnc-desktop-ubuntu-24.04` | Prefix applied to openbox, elementary, and kde names                |
 | `USE_CERTBOT`     | `false`                      | Run certbot at bake time (only for private AMIs)                    |
 | `AMI_PUBLIC`      | `false`                      | Make resulting AMIs publicly launchable                             |
 | `AMI_ENVIRONMENT` | `test`                       | `Environment` tag value; use `production` for public release builds |

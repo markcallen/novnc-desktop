@@ -43,8 +43,8 @@ if (!parsed.publicIp || !parsed.vncUser || !parsed.sshKeyPath) {
 if (!parsed.accessUrl) {
   throw new Error(
     `Smoke state at ${stateFile} does not include a desktop access URL.\n` +
-      `Run 'pnpm provision:openbox', 'pnpm provision:elementary', or ` +
-      `'pnpm provision:elementary:custom-ports' first.`
+      `Run 'pnpm provision:openbox', 'pnpm provision:elementary', ` +
+      `'pnpm provision:elementary:custom-ports', or 'pnpm provision:kde' first.`
   );
 }
 

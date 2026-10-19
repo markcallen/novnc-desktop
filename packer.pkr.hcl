@@ -183,12 +183,61 @@ source "amazon-ebs" "elementary" {
   ssh_timeout  = "10m"
 }
 
+source "amazon-ebs" "kde" {
+  ami_name        = "${var.ami_name_prefix}-kde-${local.timestamp}"
+  ami_description = "noVNC Desktop (KDE Plasma WhiteSur) over HTTPS with Ubuntu 24.04 LTS"
+  instance_type   = var.instance_type
+  region          = var.aws_region
+  ami_regions     = var.ami_regions
+  source_ami      = data.amazon-ami.ubuntu.id
+
+  associate_public_ip_address = true
+  ebs_optimized               = true
+
+  ami_groups = var.ami_public ? ["all"] : []
+
+  launch_block_device_mappings {
+    device_name           = "/dev/sda1"
+    volume_size           = var.root_volume_size
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
+
+  snapshot_tags = {
+    Name        = "${var.ami_name_prefix}-kde"
+    BuildTool   = "Packer"
+    BuildDate   = local.timestamp
+    Environment = var.ami_environment
+    GitSha      = var.git_sha
+    Project     = "novnc-desktop"
+    Version     = var.app_version
+    Variant     = "kde"
+  }
+
+  tags = {
+    Name        = "${var.ami_name_prefix}-kde"
+    OS          = "Ubuntu 24.04 LTS"
+    BuildTool   = "Packer"
+    BuildDate   = local.timestamp
+    Description = "noVNC Desktop (KDE Plasma WhiteSur) over HTTPS with Ubuntu 24.04 LTS"
+    Environment = var.ami_environment
+    GitSha      = var.git_sha
+    Project     = "novnc-desktop"
+    Version     = var.app_version
+    Variant     = "kde"
+  }
+
+  ssh_username = "ubuntu"
+  ssh_timeout  = "10m"
+}
+
 build {
   name = "novnc-desktop-ubuntu-24.04"
 
   sources = [
     "source.amazon-ebs.openbox",
     "source.amazon-ebs.elementary",
+    "source.amazon-ebs.kde",
   ]
 
   # Step 1: Fix any broken dpkg/apt state and update system
@@ -246,6 +295,24 @@ build {
       "ANSIBLE_HOST_KEY_CHECKING=False",
       "ANSIBLE_ROLES_PATH=${path.root}/roles",
       "ANSIBLE_COLLECTIONS_PATH=/tmp/novnc-collections-elementary",
+      "LANG=en_US.utf8",
+      "LC_ALL=en_US.utf8",
+    ]
+  }
+
+  # Step 2c: Run Ansible for KDE Plasma WhiteSur variant.
+  provisioner "ansible" {
+    only                 = ["amazon-ebs.kde"]
+    playbook_file        = "${path.root}/packer-playbook.yml"
+    galaxy_file          = "${path.root}/packer-requirements.yml"
+    galaxy_force_install = true
+    extra_arguments = [
+      "--extra-vars", "ansible_python_interpreter=/usr/bin/python3 desktop_type=kde use_certbot=${var.use_certbot} novnc_http_port=${var.novnc_http_port} novnc_https_port=${var.novnc_https_port}",
+    ]
+    ansible_env_vars = [
+      "ANSIBLE_HOST_KEY_CHECKING=False",
+      "ANSIBLE_ROLES_PATH=${path.root}/roles",
+      "ANSIBLE_COLLECTIONS_PATH=/tmp/novnc-collections-kde",
       "LANG=en_US.utf8",
       "LC_ALL=en_US.utf8",
     ]

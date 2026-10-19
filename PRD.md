@@ -25,7 +25,7 @@ There is no lightweight, self-hosted, provider-agnostic solution that gives a de
 2. Access is token-secured over HTTPS. No VNC password is used. No VNC client is needed.
 3. After provisioning, the developer SSHs in and runs `novnc-desktop-url` to get a signed URL they can paste into any browser.
 4. Self-signed TLS certificates work out of the box. Let's Encrypt is available as an opt-in upgrade when a public domain is configured.
-5. The desktop environment is configurable: Openbox (default, lightweight), Pantheon (Elementary), or Deepin.
+5. The desktop environment is configurable: Openbox (default, lightweight), Pantheon (Elementary), or KDE Plasma with WhiteSur.
 6. The role is usable standalone and as a component of larger automation stacks (specifically `ai-agent-desktop`, which relies on this role for its nginx access layer).
 
 ---
@@ -60,7 +60,7 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-1.1 | Running `ansible-playbook site.yml` on a clean Ubuntu 24.04 host completes without error and leaves the desktop reachable over HTTPS. |
 | FR-1.2 | The playbook is idempotent. Re-running it on an already-provisioned host makes no disruptive changes.                                 |
-| FR-1.3 | The `desktop_type` variable selects the desktop environment. Accepted values: `openbox` (default), `elementary`.                      |
+| FR-1.3 | The `desktop_type` variable selects the desktop environment. Accepted values: `openbox` (default), `elementary`, `kde`.               |
 | FR-1.4 | An unsupported `desktop_type` value causes the playbook to fail with a clear error message before making any changes.                 |
 
 ### FR-2 — Access security
@@ -95,15 +95,19 @@ The role's token-auth service exposes a localhost `POST /generate` endpoint. Aut
 
 ### FR-5 — Desktop environments
 
-| ID     | Requirement                                                                                                                                                                                                                                  |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-5.1 | **Openbox**: installs `openbox`, `tint2`, and `xterm`. Fully supported on Ubuntu 24.04 from main repos.                                                                                                                                      |
-| FR-5.2 | **Elementary (Pantheon)**: installs from `ppa:elementary-os/stable`. Treated as best-effort; if the PPA does not support the host's Ubuntu release the task warns and continues rather than failing the playbook.                            |
-| FR-5.3 | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                                                    |
-| FR-5.4 | **Elementary (Pantheon)**: when `gala` crashes during VNC session startup or while the session remains active under software rendering, the session automatically restarts `gala` without requiring a TigerVNC service restart.              |
-| FR-5.5 | **Elementary (Pantheon)**: when `smoke_test_marker_enabled=true`, the `SMOKE_READY` xterm is raised and focused after session startup so keyboard input works immediately through noVNC.                                                     |
-| FR-5.6 | **Elementary (Pantheon)**: the Pantheon shell override used to suppress focus-stealing components is deployed only when `smoke_test_marker_enabled=true` so non-smoke sessions keep the default shell layout.                                |
-| FR-5.7 | For all desktop types, Google Chrome is installed and configured as the default browser for both system browser alternatives and the VNC user's XDG desktop URL/MIME handlers. First launch should not show Chrome's default-browser prompt. |
+| ID      | Requirement                                                                                                                                                                                                                                                |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-5.1  | **Openbox**: installs `openbox`, `tint2`, and `xterm`. Fully supported on Ubuntu 24.04 from main repos.                                                                                                                                                    |
+| FR-5.2  | **Elementary (Pantheon)**: installs from `ppa:elementary-os/stable`. Treated as best-effort; if the PPA does not support the host's Ubuntu release the task warns and continues rather than failing the playbook.                                          |
+| FR-5.3  | For all desktop types, any display manager pulled in as a dependency is masked so it does not conflict with TigerVNC's display ownership.                                                                                                                  |
+| FR-5.4  | **Elementary (Pantheon)**: when `gala` crashes during VNC session startup or while the session remains active under software rendering, the session automatically restarts `gala` without requiring a TigerVNC service restart.                            |
+| FR-5.5  | **Elementary (Pantheon)**: when `smoke_test_marker_enabled=true`, the `SMOKE_READY` xterm is raised and focused after session startup so keyboard input works immediately through noVNC.                                                                   |
+| FR-5.6  | **Elementary (Pantheon)**: the Pantheon shell override used to suppress focus-stealing components is deployed only when `smoke_test_marker_enabled=true` so non-smoke sessions keep the default shell layout.                                              |
+| FR-5.7  | For all desktop types, Google Chrome is installed and configured as the default browser for both system browser alternatives and the VNC user's XDG desktop URL/MIME handlers. First launch should not show Chrome's default-browser prompt.               |
+| FR-5.8  | **KDE Plasma**: installs a VNC-compatible KDE Plasma X11 session from Ubuntu packages, installs WhiteSur KDE theme assets for Plasma, installs WhiteSur GTK theme assets for GTK applications, and configures the VNC user to use WhiteSur theme settings. |
+| FR-5.9  | **KDE Plasma**: when `smoke_test_marker_enabled=true`, the `SMOKE_READY` xterm is raised and focused after session startup so the generic desktop canvas smoke test can verify KDE rendering through noVNC.                                                |
+| FR-5.10 | **KDE Plasma**: disables KDE screen locking, KDE Wallet password prompts, and KDE polkit authentication dialogs for the VNC session so no additional login or unlock page appears after noVNC token authentication.                                        |
+| FR-5.11 | **KDE Plasma**: installs Konsole and configures its shortcuts so `Ctrl+C` copies, `Ctrl+V` pastes, and `Ctrl+Shift+C` sends SIGINT to the terminal process.                                                                                                |
 
 ### FR-6 — `novnc-auth` service
 
@@ -140,7 +144,7 @@ first boot. Post-launch setup is limited to TLS configuration (via
 
 | ID      | Requirement                                                                                                                                                                                                                                                                                                                        |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-8.1  | `build-ami.sh` produces one AMI per supported desktop variant (`openbox`, `elementary`) tagged with `Variant`, `Environment`, `Project=novnc-desktop`, and `BuildDate`.                                                                                                                                                            |
+| FR-8.1  | `build-ami.sh` produces one AMI per supported desktop variant (`openbox`, `elementary`, `kde`) tagged with `Variant`, `Environment`, `Project=novnc-desktop`, and `BuildDate`.                                                                                                                                                     |
 | FR-8.2  | `packer-playbook.yml` runs all five Ansible roles (`desktop`, `vnc`, `novnc`, `auth`, `nginx`) during the Packer build so the AMI is fully provisioned.                                                                                                                                                                            |
 | FR-8.3  | An EC2 instance launched from the AMI has `novnc-desktop-url` present at `/usr/local/bin/novnc-desktop-url` without any post-launch Ansible run.                                                                                                                                                                                   |
 | FR-8.4  | An EC2 instance launched from the AMI has `novnc-setup-tls` present at `/usr/local/bin/novnc-setup-tls` without any post-launch Ansible run.                                                                                                                                                                                       |
@@ -206,6 +210,15 @@ To find the test that covers an AC, search the codebase for the AC ID string
 | AC-ELEMENTARY-01 | FR-5.4              | `gala` process restarts within 20 s after being killed    |
 | AC-ELEMENTARY-02 | FR-5.5              | Clicking the noVNC canvas focuses the `SMOKE_READY` xterm |
 
+### KDE Plasma — verified only when `desktopType=kde`
+
+| ID        | Requirement covered | Observable outcome                                                                                  |
+| --------- | ------------------- | --------------------------------------------------------------------------------------------------- |
+| AC-KDE-01 | FR-5.8              | KDE Plasma shell is running in the VNC session                                                      |
+| AC-KDE-02 | FR-5.8              | WhiteSur KDE and GTK theme assets exist and KDE/GTK config selects WhiteSur themes                  |
+| AC-KDE-03 | FR-5.10             | KDE screen locking, KDE Wallet, and KDE polkit authentication prompts are disabled for the VNC user |
+| AC-KDE-04 | FR-5.11             | Konsole is installed and configured with `Ctrl+C` copy, `Ctrl+V` paste, and `Ctrl+Shift+C` SIGINT   |
+
 ### Direct Ansible provisioning — verified by `pnpm infra:up + provision:* + test`
 
 These criteria confirm the state of a host that was provisioned from scratch
@@ -264,7 +277,7 @@ Nginx
   │                 TigerVNC :5901
   │                      │  X display :1
   │                      ▼
-  │                 Desktop session (openbox / pantheon)
+  │                 Desktop session (openbox / pantheon / kde)
   │
   └── POST /generate  blocked (deny all)
 
@@ -290,7 +303,7 @@ SSH user
 
 | Variable                    | Default                                               | Description                                                                                |
 | --------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `desktop_type`              | `openbox`                                             | Desktop environment: `openbox`, `elementary`                                               |
+| `desktop_type`              | `openbox`                                             | Desktop environment: `openbox`, `elementary`, `kde`                                        |
 | `vnc_user`                  | `ubuntu`                                              | OS user that owns the desktop session                                                      |
 | `vnc_display`               | `1`                                                   | X display number                                                                           |
 | `vnc_geometry`              | `1280x720`                                            | Screen resolution                                                                          |

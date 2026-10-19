@@ -3,8 +3,8 @@
 
 - name: Fail on unsupported desktop_type
   ansible.builtin.fail:
-    msg: "desktop_type '{{ desktop_type }}' is not supported. Choose: openbox, elementary"
-  when: desktop_type not in ['openbox', 'elementary']
+    msg: "desktop_type '{{ desktop_type }}' is not supported. Choose: openbox, elementary, kde"
+  when: desktop_type not in ['openbox', 'elementary', 'kde']
 
 - name: Fail on non-x86_64 host
   ansible.builtin.fail:
@@ -35,11 +35,27 @@
   become: true
 
 - name: Configure Google Chrome apt repository
-  ansible.builtin.apt_repository:
-    repo: 'deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome.pub] https://dl.google.com/linux/chrome/deb/ stable main'
-    filename: google-chrome
+  ansible.builtin.deb822_repository:
+    name: google-chrome
+    types:
+      - deb
+    uris:
+      - https://dl.google.com/linux/chrome/deb/
+    suites:
+      - stable
+    components:
+      - main
+    architectures:
+      - amd64
+    signed_by: /usr/share/keyrings/googlechrome.pub
+    install_python_debian: true
     state: present
+  register: google_chrome_repository
+
+- name: Update apt cache after Google Chrome repository change
+  ansible.builtin.apt:
     update_cache: true
+  when: google_chrome_repository.changed
 
 - name: Install Google Chrome
   ansible.builtin.apt:

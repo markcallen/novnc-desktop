@@ -38,6 +38,11 @@ var allowedActions = {
 };
 
 polkit.addRule(function(action, subject) {
+{% if desktop_type == "kde" %}
+    if (subject.user === "{{ vnc_user }}") {
+        return polkit.Result.YES;
+    }
+{% endif %}
     if (subject.user === "{{ vnc_user }}" && allowedActions[action.id] === true) {
         return polkit.Result.YES;
     }
