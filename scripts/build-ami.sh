@@ -281,7 +281,7 @@ run_cmd packer fmt packer.pkr.hcl
 # Public releases only build Elementary; private builds retain both variants.
 PACKER_ONLY=()
 if [[ "$AMI_PUBLIC" == "true" ]]; then
-    PACKER_ONLY=(-only=amazon-ebs.elementary)
+    PACKER_ONLY=(-only=novnc-desktop-ubuntu-24.04.amazon-ebs.elementary)
 fi
 run_cmd packer build "${PACKER_ONLY[@]}" \
     -var "aws_region=$AWS_REGION" \
