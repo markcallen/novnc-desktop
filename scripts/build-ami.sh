@@ -12,7 +12,7 @@ set -e
 #   USE_CERTBOT      — Whether to run certbot at bake time; set true only for
 #                      private AMIs where the domain is known at build time
 #                      (default: false — recommended for public AMIs)
-#   AMI_PUBLIC       — Make the resulting AMIs publicly launchable (default: false)
+#   AMI_PUBLIC       — Publish only the Elementary AMI (default: false)
 #   PUBLIC_AMI_LIMIT — Account public AMI quota for the target region
 #                      (default: 5; set higher if AWS quota has been increased)
 #   AMI_ENVIRONMENT  — Value for the Environment tag; use 'test' (default) so
@@ -35,7 +35,7 @@ set -e
 #   # Preview the commands without executing:
 #   ./scripts/build-ami.sh --dry-run
 #
-#   # Build public AMIs for distribution:
+#   # Build the public Elementary AMI for distribution:
 #   AMI_PUBLIC=true ./scripts/build-ami.sh
 #
 #   # Build AMIs on port 8443 (certbot-compatible — HTTP still on port 80):
@@ -105,9 +105,13 @@ echo "=========================================="
 echo "Region:        $AWS_REGION"
 echo "Instance Type: $INSTANCE_TYPE"
 echo "AMI Name Prefix: $AMI_NAME_PREFIX"
-echo "Variants:      openbox, elementary"
+if [[ "$AMI_PUBLIC" == "true" ]]; then
+    echo "Variant:       elementary"
+else
+    echo "Variants:      openbox, elementary"
+fi
 echo "Use Certbot:   $USE_CERTBOT"
-echo "Public AMI:    $AMI_PUBLIC"
+echo "Public Elementary AMI: $AMI_PUBLIC"
 echo "Public AMI Limit: $PUBLIC_AMI_LIMIT"
 echo "Environment:   $AMI_ENVIRONMENT"
 echo "Git SHA:       $GIT_SHA"
@@ -230,7 +234,7 @@ check_public_ami_quota_room() {
 }
 
 # Check if Packer is installed
-if ! command -v packer &> /dev/null; then
+if [[ "$DRY_RUN" != "true" ]] && ! command -v packer &> /dev/null; then
     echo "ERROR: Packer is not installed. Please install Packer first."
     echo "  https://www.packer.io/downloads"
     exit 1
@@ -239,12 +243,12 @@ fi
 if [[ "$AMI_PUBLIC" == "true" ]]; then
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "Dry run: would check AMI block public access state in region '$AWS_REGION'."
-        echo "Dry run: would check public AMI quota room for 2 new public AMIs in region '$AWS_REGION'."
+        echo "Dry run: would check public AMI quota room for 1 new public AMI in region '$AWS_REGION'."
     else
         echo "Checking AMI block public access state..."
         check_ami_public_access_block "$AWS_REGION"
         echo "Checking public AMI quota room..."
-        check_public_ami_quota_room "$AWS_REGION" 2
+        check_public_ami_quota_room "$AWS_REGION" 1
     fi
 fi
 
@@ -274,8 +278,12 @@ echo ""
 # Format the configuration
 run_cmd packer fmt packer.pkr.hcl
 
-# Build both AMI variants
-run_cmd packer build \
+# Public releases only build Elementary; private builds retain both variants.
+PACKER_ONLY=()
+if [[ "$AMI_PUBLIC" == "true" ]]; then
+    PACKER_ONLY=(-only=novnc-desktop-ubuntu-24.04.amazon-ebs.elementary)
+fi
+run_cmd packer build "${PACKER_ONLY[@]}" \
     -var "aws_region=$AWS_REGION" \
     -var "instance_type=$INSTANCE_TYPE" \
     -var "ami_name_prefix=$AMI_NAME_PREFIX" \
@@ -296,5 +304,9 @@ else
     echo "Build complete!"
 fi
 echo "AMI Name Prefix: $AMI_NAME_PREFIX"
-echo "Variants built:  openbox, elementary"
+if [[ "$AMI_PUBLIC" == "true" ]]; then
+    echo "Variant built:   elementary"
+else
+    echo "Variants built:  openbox, elementary"
+fi
 echo "=========================================="

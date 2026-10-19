@@ -5,12 +5,13 @@
 # Default regions: us-east-1, us-east-2, us-west-2
 #
 # Modes:
-#   --public  Build public AMIs, but fail when a region has >=4 matching public AMIs.
+#   --public  Build only a public Elementary AMI, subject to the regional limit.
 #   --private Build private AMIs in all regions (single build + copy).
 #
 # Optional env vars:
 #   AMI_NAME_PREFIX   (default: novnc-desktop-ubuntu-24.04)
 #   PUBLIC_LIMIT      (default: 4)
+#   PUBLIC_AMI_LIMIT  (default: 5; account-wide public AMI quota)
 #   AMI_ENVIRONMENT   (default: production for --public, test for --private)
 #   REGIONS           Space or comma separated target regions.
 #                     The first region is used as the primary build region
@@ -31,6 +32,7 @@ DEFAULT_REGIONS="us-east-1 us-east-2 us-west-2"
 REGION_INPUT="${REGIONS:-$DEFAULT_REGIONS}"
 AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-novnc-desktop-ubuntu-24.04}"
 PUBLIC_LIMIT="${PUBLIC_LIMIT:-4}"
+PUBLIC_AMI_LIMIT="${PUBLIC_AMI_LIMIT:-5}"
 MODE="public"
 DRY_RUN="false"
 
@@ -43,7 +45,7 @@ usage() {
 Usage: bash scripts/build-ami-multi-region.sh [--public|--private] [--dry-run]
 
 Options:
-  --public    Build public AMIs (default). Fails if any region has >= PUBLIC_LIMIT existing matching public AMIs.
+  --public    Build only a public Elementary AMI (default). Fails if any region has >= PUBLIC_LIMIT existing matching public AMIs.
   --private   Build private AMIs in all regions.
   --dry-run   Print what would run without building.
   --help      Show this help.
@@ -52,6 +54,7 @@ Environment:
   REGIONS="us-east-1 us-east-2 us-west-2"
   REGIONS="us-east-1,us-east-2,us-west-2"
   PRIMARY_REGION="us-east-1"
+  PUBLIC_AMI_LIMIT="5"
   NOVNC_ANSIBLE_LOCALE="en_US.utf8"
   ANSIBLE_LOCAL_TEMP="/tmp/novnc-ansible-local"
 USAGE
@@ -90,6 +93,11 @@ fi
 
 if ! [[ "$PUBLIC_LIMIT" =~ ^[0-9]+$ ]]; then
   echo "ERROR: PUBLIC_LIMIT must be a non-negative integer (got: $PUBLIC_LIMIT)" >&2
+  exit 1
+fi
+
+if ! [[ "$PUBLIC_AMI_LIMIT" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: PUBLIC_AMI_LIMIT must be a non-negative integer (got: $PUBLIC_AMI_LIMIT)" >&2
   exit 1
 fi
 
@@ -163,8 +171,19 @@ count_matching_public_amis() {
     --filters \
       "Name=tag:Project,Values=novnc-desktop" \
       "Name=tag:Environment,Values=$AMI_ENVIRONMENT_VALUE" \
+      "Name=tag:Variant,Values=elementary" \
       "Name=state,Values=available" \
       "Name=name,Values=${AMI_NAME_PREFIX}-*" \
+    --query 'length(Images[?Public==`true`])' \
+    --output text
+}
+
+count_public_amis() {
+  local region="$1"
+
+  aws ec2 describe-images \
+    --region "$region" \
+    --owners self \
     --query 'length(Images[?Public==`true`])' \
     --output text
 }
@@ -177,14 +196,26 @@ for region in "${BUILD_REGIONS[@]}"; do
     if [[ "$DRY_RUN" == "true" ]]; then
       echo "Dry run: would check AMI block public access state in $region."
       echo "Dry run: would check matching public AMI count in $region."
+      echo "Dry run: would check account-wide public AMI quota in $region."
     else
       check_ami_public_access_block "$region"
       public_count="$(count_matching_public_amis "$region")"
-      echo "Public AMIs matching prefix '${AMI_NAME_PREFIX}-*': $public_count"
+      echo "Public Elementary AMIs matching prefix '${AMI_NAME_PREFIX}-*': $public_count"
 
       if (( public_count >= PUBLIC_LIMIT )); then
         echo "ERROR: $region already has ${public_count} matching public AMIs (limit=${PUBLIC_LIMIT})." >&2
         echo "Run the AMI cleanup script, then retry this command." >&2
+        exit 1
+      fi
+
+      account_public_count="$(count_public_amis "$region")"
+      if ! [[ "$account_public_count" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: Unexpected account-wide public AMI count in $region: $account_public_count" >&2
+        exit 1
+      fi
+      echo "Account-wide public AMIs in $region: $account_public_count / $PUBLIC_AMI_LIMIT"
+      if (( account_public_count >= PUBLIC_AMI_LIMIT )); then
+        echo "ERROR: $region has no public AMI quota room for the Elementary build." >&2
         exit 1
       fi
     fi
@@ -223,12 +254,16 @@ PACKER_CMD=(
   "$PACKER_TEMPLATE"
 )
 
+if [[ "$MODE" == "public" ]]; then
+  PACKER_CMD=(packer build -only=novnc-desktop-ubuntu-24.04.amazon-ebs.elementary "${PACKER_CMD[@]:2}")
+fi
+
 echo ""
 echo "Primary build region: $PRIMARY_REGION"
 echo "Regions:              ${BUILD_REGIONS[*]}"
 echo "Copy target regions:  ${TARGET_REGIONS[*]//\"/}"
 echo "Mode:                 $MODE"
-echo "Public:               $AMI_PUBLIC_VALUE"
+echo "Public Elementary:    $AMI_PUBLIC_VALUE"
 echo "Environment:          $AMI_ENVIRONMENT_VALUE"
 
 if [[ "$DRY_RUN" == "true" ]]; then
