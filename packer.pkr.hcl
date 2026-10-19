@@ -98,7 +98,8 @@ source "amazon-ebs" "openbox" {
   associate_public_ip_address = true
   ebs_optimized               = true
 
-  ami_groups = var.ami_public ? ["all"] : []
+  # Openbox is retained for private builds but is never published.
+  ami_groups = []
 
   launch_block_device_mappings {
     device_name           = "/dev/sda1"

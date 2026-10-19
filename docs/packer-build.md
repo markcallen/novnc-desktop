@@ -102,7 +102,7 @@ Edit `packer.pkr.hcl` or pass variables via the `-var` flag:
 | `root_volume_size` | `20`                         | Root volume size in GB                                                                               |
 | `ami_name_prefix`  | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary AMI names                                              |
 | `use_certbot`      | `false`                      | Run certbot at bake time; leave false for public AMIs that use user-data for TLS                     |
-| `ami_public`       | `false`                      | Set launch permissions to allow all AWS accounts (`ami_groups = ["all"]`)                            |
+| `ami_public`       | `false`                      | Publish Elementary to all AWS accounts; Openbox remains private                                      |
 | `ami_environment`  | `test`                       | Value for the `Environment` tag; use `test` for smoke-discoverable builds, `production` for releases |
 | `novnc_http_port`  | `80`                         | HTTP port nginx listens on. Must be `80` when using Let's Encrypt (HTTP-01 challenge)                |
 | `novnc_https_port` | `443`                        | HTTPS port nginx listens on. Use `8443` for non-standard deployments                                 |
