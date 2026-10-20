@@ -52,7 +52,14 @@ The AMI is already provisioned. It boots with a self-signed HTTPS certificate an
 
    Change `us-east-1` to your region. If the result is `None`, no matching public AMI is available there.
 
-2. Launch that AMI with a `t3.medium` instance, an SSH key pair, a public subnet, and a public IP. Allow inbound TCP 22 from your IP and TCP 443 from the browsers that will use the desktop. The AMI's `ubuntu` user accepts your SSH key.
+2. Launch that AMI with a `t3.medium` instance, an SSH key pair, a public subnet, and a public IP. Allow inbound TCP 22 from your IP and TCP 443 from the browsers that will use the desktop. In **Advanced details → User data**, paste this JSON so the first-boot service uses the standard ports even if the AMI was built with custom ones:
+
+   ```json
+   { "novnc_http_port": 80, "novnc_https_port": 443 }
+   ```
+
+   The AMI's `ubuntu` user accepts your SSH key.
+
 3. Once the instance is running, get a time-limited access URL and open it in your browser:
 
    ```sh
