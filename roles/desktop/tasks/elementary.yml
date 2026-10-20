@@ -12,6 +12,10 @@
     repo: 'ppa:elementary-os/stable'
     state: present
     update_cache: true
+  register: elementary_ppa
+  until: elementary_ppa is succeeded
+  retries: 4
+  delay: 15
 
 - name: Install Mesa software rendering driver
   ansible.builtin.apt:
