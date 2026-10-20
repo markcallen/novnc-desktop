@@ -60,7 +60,7 @@ Then launch the instance (see `docs/launch-from-ami.md` for the full AWS CLI wor
 ```bash
 aws ec2 run-instances \
   --image-id ami-XXXXXXXX \
-  --instance-type t3.medium \
+  --instance-type t3.large \
   --user-data file://user-data.sh \
   --security-group-ids sg-XXXXXXXX \
   --key-name my-keypair
@@ -74,7 +74,7 @@ only needs to export variables and call the script — no file embedding require
 ```hcl
 resource "aws_instance" "novnc_with_tls" {
   ami           = var.novnc_ami_id
-  instance_type = "t3.medium"
+  instance_type = "t3.large"
   key_name      = aws_key_pair.main.key_name
 
   vpc_security_group_ids = [aws_security_group.novnc.id]

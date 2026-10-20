@@ -52,7 +52,7 @@ The AMI is already provisioned. It boots with a self-signed HTTPS certificate an
 
    Change `us-east-1` to your region. If the result is `None`, no matching public AMI is available there.
 
-2. Launch that AMI with a `t3.medium` instance, an SSH key pair, a public subnet, and a public IP. Allow inbound TCP 22 from your IP and TCP 443 from the browsers that will use the desktop. In **Advanced details → User data**, paste this JSON so the first-boot service uses the standard ports even if the AMI was built with custom ones:
+2. Launch that AMI with a `t3.large` instance, an SSH key pair, a public subnet, and a public IP. Allow inbound TCP 22 from your IP and TCP 443 from the browsers that will use the desktop. In **Advanced details → User data**, paste this JSON so the first-boot service uses the standard ports even if the AMI was built with custom ones:
 
    ```json
    { "novnc_http_port": 80, "novnc_https_port": 443 }
@@ -86,7 +86,7 @@ AMI_NAME_PREFIX=my-novnc AWS_REGION=us-west-2 AMI_PUBLIC=true ./scripts/build-am
 | Variable          | Default                      | Description                                                   |
 | ----------------- | ---------------------------- | ------------------------------------------------------------- |
 | `AWS_REGION`      | `us-east-1`                  | AWS region to build in                                        |
-| `INSTANCE_TYPE`   | `t3.medium`                  | EC2 instance type for the build                               |
+| `INSTANCE_TYPE`   | `t3.large`                   | EC2 instance type for the build                               |
 | `AMI_NAME_PREFIX` | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary names           |
 | `USE_CERTBOT`     | `false`                      | Run certbot at bake time (only for private AMIs)              |
 | `AMI_PUBLIC`      | `false`                      | Build and publish only the Elementary AMI when `true`         |

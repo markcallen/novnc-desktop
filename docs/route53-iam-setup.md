@@ -115,7 +115,7 @@ Pass `--iam-instance-profile` when running the instance:
 ```bash
 aws ec2 run-instances \
   --image-id "$AMI_ID" \
-  --instance-type t3.medium \
+  --instance-type t3.large \
   --key-name novnc-desktop-key \
   --security-group-ids "$SG_ID" \
   --subnet-id "$SUBNET_ID" \
@@ -202,7 +202,7 @@ resource "aws_iam_instance_profile" "novnc_certbot" {
 
 resource "aws_instance" "novnc" {
   ami                  = var.novnc_ami_id
-  instance_type        = "t3.medium"
+  instance_type        = "t3.large"
   iam_instance_profile = aws_iam_instance_profile.novnc_certbot.name
   # ...
 }

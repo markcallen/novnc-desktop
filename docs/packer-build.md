@@ -36,7 +36,7 @@ This guide explains how to build an AWS AMI for the noVNC Desktop using Packer.
 
 ### Basic Build
 
-Build an AMI with default settings (us-east-1, t3.medium instance type):
+Build an AMI with default settings (us-east-1, t3.large instance type):
 
 ```bash
 ./scripts/build-ami.sh
@@ -47,7 +47,7 @@ Build an AMI with default settings (us-east-1, t3.medium instance type):
 Build with custom AWS region and instance type:
 
 ```bash
-AWS_REGION=us-west-2 INSTANCE_TYPE=t3.large ./scripts/build-ami.sh
+AWS_REGION=us-west-2 INSTANCE_TYPE=t3.xlarge ./scripts/build-ami.sh
 ```
 
 Or manually with Packer:
@@ -55,7 +55,7 @@ Or manually with Packer:
 ```bash
 packer build \
   -var 'aws_region=us-west-2' \
-  -var 'instance_type=t3.large' \
+  -var 'instance_type=t3.xlarge' \
   -var 'ami_name_prefix=novnc-desktop-custom' \
   packer.pkr.hcl
 ```
@@ -98,7 +98,7 @@ Edit `packer.pkr.hcl` or pass variables via the `-var` flag:
 | Variable           | Default                      | Description                                                                                          |
 | ------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `aws_region`       | `us-east-1`                  | AWS region for the build                                                                             |
-| `instance_type`    | `t3.medium`                  | EC2 instance type (t3.small for faster/cheaper builds, t3.large for faster builds)                   |
+| `instance_type`    | `t3.large`                   | EC2 instance type for the build; override with `INSTANCE_TYPE`                                       |
 | `root_volume_size` | `20`                         | Root volume size in GB                                                                               |
 | `ami_name_prefix`  | `novnc-desktop-ubuntu-24.04` | Prefix applied to both openbox and elementary AMI names                                              |
 | `use_certbot`      | `false`                      | Run certbot at bake time; leave false for public AMIs that use user-data for TLS                     |
@@ -113,9 +113,9 @@ See [route53-iam-setup.md](./route53-iam-setup.md) for the IAM role required to 
 
 ## Instance Type Selection
 
-- **t3.small**: Cheapest, ~5-10 minutes (minimal overhead)
-- **t3.medium**: Balanced (default), ~10-15 minutes
-- **t3.large**: Faster, ~8-12 minutes (but more expensive)
+- **t3.large**: Default build instance
+- **t3.medium**: Smaller instance, if the build fits its available memory
+- **t3.xlarge**: More resources, if the build needs them
 
 ## Troubleshooting
 
@@ -125,7 +125,7 @@ This is now handled automatically by the new Packer configuration. If you still 
 
 1. Ensure the base image is clean (use a fresh Ubuntu 24.04 AMI)
 2. Check that no other builds are using the same base image
-3. Try a different instance type with more resources (e.g., t3.large)
+3. Try a different instance type with more resources (e.g., t3.xlarge)
 
 ### Build Fails on Ansible Task
 
@@ -146,12 +146,12 @@ If Packer times out waiting for SSH:
    ```hcl
    ssh_timeout = "15m"
    ```
-2. Use a larger instance type (t3.medium or larger)
+2. Use a larger instance type (t3.large or larger)
 3. Check your AWS VPC security group allows SSH from Packer's IP
 
 ### Build Takes Too Long
 
-- Use a larger instance type: `INSTANCE_TYPE=t3.large ./scripts/build-ami.sh`
+- Use a larger instance type: `INSTANCE_TYPE=t3.xlarge ./scripts/build-ami.sh`
 - Increase the EBS volume type to `gp3` (already configured)
 - Check your internet connection (Ubuntu packages are being downloaded)
 
@@ -164,7 +164,7 @@ After a successful build:
    ```bash
    aws ec2 run-instances \
      --image-id ami-xxxxx \
-     --instance-type t3.medium \
+     --instance-type t3.large \
      --region us-east-1 \
      --key-name your-keypair
    ```

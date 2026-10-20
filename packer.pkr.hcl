@@ -13,7 +13,7 @@ variable "ami_regions" {
 variable "instance_type" {
   type        = string
   description = "EC2 instance type to use for the build"
-  default     = "t3.medium"
+  default     = "t3.large"
 }
 
 variable "root_volume_size" {

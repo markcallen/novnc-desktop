@@ -51,12 +51,12 @@ cd /path/to/novnc-desktop
 ./scripts/build-ami.sh
 ```
 
-This builds an AMI named `novnc-desktop-ubuntu-24.04-<timestamp>` in `us-east-1` using a `t3.medium` instance.
+This builds an AMI named `novnc-desktop-ubuntu-24.04-<timestamp>` in `us-east-1` using a `t3.large` instance.
 
 ### Custom Build
 
 ```bash
-AWS_REGION=us-west-2 INSTANCE_TYPE=t3.large ./scripts/build-ami.sh
+AWS_REGION=us-west-2 INSTANCE_TYPE=t3.xlarge ./scripts/build-ami.sh
 ```
 
 ### Manual Packer Build
@@ -67,7 +67,7 @@ packer build packer.pkr.hcl
 # With custom variables:
 packer build \
   -var 'aws_region=us-west-2' \
-  -var 'instance_type=t3.large' \
+  -var 'instance_type=t3.xlarge' \
   packer.pkr.hcl
 ```
 
@@ -122,7 +122,7 @@ Launch this AMI to test:
 # Launch an instance from the AMI
 aws ec2 run-instances \
   --image-id ami-0123456789abcdef \
-  --instance-type t3.medium \
+  --instance-type t3.large \
   --key-name your-keypair \
   --region us-east-1
 
@@ -187,15 +187,9 @@ aws sts get-caller-identity
 
 ## Cost Considerations
 
-Typical build costs:
-
-- **t3.small**: $0.02-0.04 per build (fastest: 5-8 min)
-- **t3.medium**: $0.03-0.06 per build (balanced: 10-15 min) ← **default**
-- **t3.large**: $0.05-0.10 per build (fastest: 8-12 min)
-
-Plus minimal EBS snapshot storage (~$0.05/month).
-
-Use `AWS_REGION` to select cheaper regions (us-east-1 is generally cheapest).
+The default build uses a temporary `t3.large` EC2 instance. AWS charges for
+the running instance and for EBS snapshots retained by the resulting AMI.
+Check current AWS pricing for your region before building.
 
 ## Next Steps
 

@@ -158,7 +158,7 @@ SUBNET_ID=subnet-XXXXXXXX
 
 INSTANCE_ID=$(aws ec2 run-instances \
   --image-id "$AMI_ID" \
-  --instance-type t3.medium \
+  --instance-type t3.large \
   --key-name novnc-desktop-key \
   --security-group-ids "$SG_ID" \
   --subnet-id "$SUBNET_ID" \
