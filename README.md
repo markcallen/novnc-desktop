@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/markcallen/novnc-desktop)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/markcallen/novnc-desktop)](https://github.com/markcallen/novnc-desktop/releases)
 
-An Ansible role and a ready-to-launch AMI for a browser-accessible Linux desktop on Ubuntu 24.04 LTS. Access uses a one-time URL over HTTPS; no VNC client or port forwarding is needed.
+An Ansible role and a ready-to-launch AMI for a browser-accessible Linux desktop on Ubuntu 24.04 LTS. Access uses a time-limited URL over HTTPS; no VNC client or port forwarding is needed.
 
 ## Requirements
 
@@ -25,7 +25,7 @@ Launching a released AMI requires no local Node, pnpm, Terraform, or Ansible ins
 For an existing Ubuntu host, install the role and its required collections on your Ansible control machine. Replace `v0.2.4` with the tag you choose from [Releases](https://github.com/markcallen/novnc-desktop/releases):
 
 ```sh
-ansible-galaxy role install git+https://github.com/markcallen/novnc-desktop.git,v0.2.4 --roles-path ./roles
+ansible-galaxy role install git+https://github.com/markcallen/novnc-desktop.git,v0.2.4,markcallen.novnc_desktop --roles-path ./roles
 ansible-galaxy collection install ansible.utils community.general
 ```
 
@@ -53,13 +53,13 @@ The AMI is already provisioned. It boots with a self-signed HTTPS certificate an
    Change `us-east-1` to your region. If the result is `None`, no matching public AMI is available there.
 
 2. Launch that AMI with a `t3.medium` instance, an SSH key pair, a public subnet, and a public IP. Allow inbound TCP 22 from your IP and TCP 443 from the browsers that will use the desktop. The AMI's `ubuntu` user accepts your SSH key.
-3. Once the instance is running, get a one-time access URL and open it in your browser:
+3. Once the instance is running, get a time-limited access URL and open it in your browser:
 
    ```sh
    ssh -i /path/to/key.pem ubuntu@<public-ip> novnc-desktop-url
    ```
 
-The default certificate is self-signed, so your browser will show a certificate warning. For a trusted certificate, follow [Launch from an AMI](docs/launch-from-ami.md): set up a domain, Route53 permissions, and the supplied [user-data script](examples/user-metadata-certbot-example.sh). That guide also has the full AWS CLI launch and cleanup commands. Stop or terminate the instance when finished to avoid ongoing EC2 charges.
+The URL remains usable until it expires (8 hours by default), including after it has been opened. Treat it as a credential. The default certificate is self-signed, so your browser will show a certificate warning. For a trusted certificate, follow [Launch from an AMI](docs/launch-from-ami.md): set up a domain, Route53 permissions, and the supplied [user-data script](examples/user-metadata-certbot-example.sh). That guide also has the full AWS CLI launch and cleanup commands. Stop or terminate the instance when finished to avoid ongoing EC2 charges.
 
 ## Building AMIs
 
@@ -154,7 +154,7 @@ Key variables:
 
 Use `-e 'desktop_type=elementary'` to choose Elementary. To request a trusted certificate, add `-e 'use_certbot=true tls_domain=desktop.example.com letsencrypt_email=you@example.com novnc_base_url=https://desktop.example.com'` to the playbook command. The domain must resolve publicly, and HTTP port 80 must be reachable for the certificate challenge. The default uses a self-signed certificate.
 
-After provisioning, run `ssh -i ~/.ssh/key.pem ubuntu@YOUR_HOST novnc-desktop-url` to get a one-time HTTPS access URL.
+After provisioning, run `ssh -i ~/.ssh/key.pem ubuntu@YOUR_HOST novnc-desktop-url` to get a time-limited HTTPS access URL. The URL can be reused until it expires; keep it private.
 
 ### novnc-desktop meta-service
 
