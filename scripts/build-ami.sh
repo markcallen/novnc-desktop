@@ -6,7 +6,7 @@ set -e
 #
 # Environment variables:
 #   AWS_REGION       — AWS region (default: us-east-1)
-#   INSTANCE_TYPE    — EC2 instance type (default: t3.medium)
+#   INSTANCE_TYPE    — EC2 instance type (default: t3.large)
 #   AMI_NAME_PREFIX  — Prefix for AMI names (default: novnc-desktop-ubuntu-24.04)
 #                      AMI_NAME is accepted as a legacy alias when AMI_NAME_PREFIX is unset.
 #   USE_CERTBOT      — Whether to run certbot at bake time; set true only for
@@ -86,7 +86,7 @@ done
 
 # Configuration
 AWS_REGION="${AWS_REGION:-us-east-1}"
-INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
+INSTANCE_TYPE="${INSTANCE_TYPE:-t3.large}"
 # AMI_NAME is kept for backwards compatibility with existing CI/CD pipelines.
 # AMI_NAME_PREFIX takes precedence when set explicitly.
 AMI_NAME_PREFIX="${AMI_NAME_PREFIX:-${AMI_NAME:-novnc-desktop-ubuntu-24.04}}"

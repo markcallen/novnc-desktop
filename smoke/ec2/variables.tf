@@ -35,7 +35,7 @@ variable "availability_zone" {
 variable "instance_type" {
   description = "EC2 instance type for the smoke test host."
   type        = string
-  default     = "t3.small"
+  default     = "t3.large"
 }
 
 variable "root_volume_size_gb" {
